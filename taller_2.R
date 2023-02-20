@@ -18,18 +18,43 @@ test_hogares <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learnin
 test_personas <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/test_personas.csv")
 sample_submission <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/sample_submission.csv")
 
-jefe_hog <- train_personas %>%
+## ----- TRAIN HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base train_personas
+
+cond_jefe_hog <- train_personas %>%
   group_by(id) %>%
   filter(Orden ==1) %>%
   select(Estrato1, P6020, P6040, P6050, P6090, P6210, P6426, P6430, P6800, P7090, P6870)
-  
-head(jefe_hog)
+
 summary(jefe_hog)
 
-head(test_hogares)
-skim
+## Uniendo condiciones del jefe de hogar con la base train_hogares
 
-#### Annadiendo variable ingreso y calculo de pobreza
+train_hogares <- left_join(train_hogares, cond_jefe_hog)
+
+colnames(train_hogares)
+
+## --- TEST HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base test_personas
+
+cond_jefe_hog_test <- test_personas %>%
+  group_by(id) %>%
+  filter(Orden ==1) %>%
+  select(P6020, P6040, P6050, P6090, P6210, P6426, P6430, P6800, P7090, P6870)
+
+summary(cond_jefe_hog_test)
+
+## Uniendo condiciones del jefe de hogar con la base test_hogares
+
+test_hogares <- left_join(test_hogares, cond_jefe_hog_test)
+
+colnames(test_hogares)
+
+# ////////////////////
+
+
+## Ampliando las varaibles de la base 
+
+
+## variable ingreso y calculo de pobreza
 
 colnames(train_hogares)
 colnames(train_personas)[1:2]

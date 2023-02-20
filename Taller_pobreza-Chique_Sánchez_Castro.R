@@ -26,6 +26,7 @@ base_train<-base_train %>%
          tipo_de_trabajo = P6430,
          horas_trabajo= P6800,
          tiene_segunda_actividad=P7040, 
+         ingreso_persona=Ingtotob
          )
 
 #Variables - Labels Factores

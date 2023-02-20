@@ -45,4 +45,5 @@ train_final<-base_train%>%
          capital_cabe_otro, vivienda_propia)
 
 ##
+##
 

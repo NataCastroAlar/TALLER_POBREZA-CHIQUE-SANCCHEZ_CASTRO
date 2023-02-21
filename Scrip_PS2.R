@@ -26,12 +26,11 @@ p_load("tidyverse", "readr", "skimr")
 
 # Importar datos
 
-train_hogares <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/train_hogares.csv")
-train_personas <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/train_personas.csv")
-test_hogares <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/test_hogares.csv")
-test_personas <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/test_personas.csv")
-
-sample_submission <- read_csv("C:/Users/User/Desktop/Dulio/Big Data y Machine Learning/Taller 2/sample_submission.csv")
+train_hogares <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/train_hogares.csv")
+train_personas <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/train_personas.csv")
+test_hogares <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/test_hogares.csv")
+test_personas <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/test_personas.csv")
+sample_submission <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/sample_submission.csv")
 
 ## ----- TRAIN HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base train_personas
 
@@ -42,7 +41,7 @@ cond_jefe_hog_train <- train_personas %>%
 
 summary(cond_jefe_hog_train)
 
-## * Uniendo condiciones del jefe de hogar con la base train_hogares
+## ----- Uniendo condiciones del jefe de hogar con la base train_hogares
 
 train_hogares <- left_join(train_hogares, cond_jefe_hog_train)
 
@@ -110,27 +109,24 @@ train_hogares<-train_hogares %>%
          tam_emp = P6870
   )
 
+test_hogares<-test_hogares %>% 
+  rename(cuartos_hogar = P5000,
+         cuartos_hogar_ocup = P5010,
+         vivienda_propia = P5090,
+         personas_hogar= Nper,
+         personas_unidad_gasto = Npersug,
+         hombre = P6020,
+         edad = P6040,
+         parentesco_jefe = P6050,
+         entidad_salud =P6090,
+         nivel_educativo = P6210,
+         tiempo_trabajando = P6426,
+         tipo_de_trabajo = P6430,
+         horas_trabajo = P6800,
+         mas_trabajo = P7090,
+         tam_emp = P6870
+  )
 
 
 
 
-## variable ingreso y calculo de pobreza
-
-colnames(train_hogares)
-colnames(train_personas)[1:2]
-
-sum_ingresos<-train_personas %>% group_by(id) %>% summarize(Ingtot_hogar=sum(Ingtot,na.rm = TRUE)) 
-summary(sum_ingresos)
-
-train_hogares<-left_join(train_hogares,sum_ingresos)
-colnames(train_hogares)
-
-head(train_hogares[c("id","Ingtotug","Ingtot_hogar")])
-
-table(train_hogares$Pobre)
-
-train_hogares<- train_hogares %>% mutate(Pobre_hand=ifelse(Ingpcug<Lp,1,0))
-table(train_hogares$Pobre,train_hogares$Pobre_hand)
-
-train_hogares<- train_hogares %>% mutate(Pobre_hand_2=ifelse(Ingtotugarr<Lp*Npersug,1,0))
-table(train_hogares$Pobre,train_hogares$Pobre_hand_2)

@@ -127,6 +127,10 @@ test_hogares<-test_hogares %>%
          tam_emp = P6870
   )
 
+mylogit <- glm(Pobre~., data = train_hogares, family = "binomial")
+summary(mylogit,type="text")
+
+
 
 
 

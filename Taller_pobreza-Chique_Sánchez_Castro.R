@@ -125,7 +125,7 @@ base_modelo<-select(train_hogares_final, pobre, Ingtot_hogar, cabecera_resto, vi
                     personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
                     mas_trabajo )
 
-##CREACION DE DUMMYS
+##CREACION DE DUMMYS Y ESTANDARIZACION DE VARIABLES CONITNUAS
 
 p_load("caret")
 train_dummy<-dummyVars(formula= ~ .+ I(edad^2) - 1, data = base_modelo, fullrank=T) 
@@ -142,39 +142,43 @@ train_final<-train_dummy_final%>%
   data.frame()%>%
   select(-all_of(multicol_NA))
 
-#Estandarizamos variables numéricas
-glimpse(train_final)
+#Estandarizamos variables numéricas para Lasso y Ridge:
+
+train_estandarizada<-train_final
+glimpse(train_estandarizada)
+
 variables_numericas<-c("Ingtot_hogar", "edad", "tiempo_trabajando", "I.edad.2.")
-escalador<-preProcess(train_final[,variables_numericas],
+escalador<-preProcess(train_estandarizada[,variables_numericas],
                       method = c("center", "scale"))
-glimpse(train_final)
-train_final<- predict(escalador, train_Final[,variables_numericas])
+
+train_estandarizada[,variables_numericas]<- predict(escalador, train_estandarizada[,variables_numericas])
+
+
+##verificamos estandarización: por ejemplo la media de la variable edad es cero y la desviación estandar 1. 
+mean(train_estandarizada$edad)
+sd(train_estandarizada$edad)
+
+##Recodificamos la variable pobre para que quede categórica:
+
+train_estandarizada<-train_estandarizada%>%
+  rename(pobre = pobre.Sí.pobre)
+
+train_estandarizada<-train_estandarizada%>%
+  mutate(pobre=factor(pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
+
+
+##MODELOS
 
 
 
-##Recodificamos la variable pobre porque está en dos columnas:
-train_dummy_final<-train_dummy_final%>%
-  mutate(pobre=factor(pobre.Sí.pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
+  
+modelo_1<-train(x=select(train_estandarizada, -pobre -pobre.No.pobre),
+                y=train_estandarizada$pobre,
+                preProcess=NULL,
+                method="glmnet")
 
 
 
-train_dummy_final<-train_dummy_final%>%
-  mutate(pobre=pobre, base_modelo)
-
-
-
-
-#Recodificamos pobre porque está en dos columnas:
-train_dummy_final<-train_dummy_final%>%
-  mutate(pobre=factor(pobre.Sí.pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
-
-#Removemos las columnas numéricas de pobre, no pobre
-
-train_dummy_final<-df[,-pobre.Sí.pobre]
-
-summary()
-
-view(train_dummy_final)
 
 set.seed(1234)
 logit_caret_train<-train(pobre ~.- pobre.Sí.pobre - pobre.No.pobre,

@@ -1,6 +1,4 @@
 
-# Limpiar todo
-
 rm(list = ls())
 
 library(readr)
@@ -15,14 +13,13 @@ test_personas <- read_csv("Documents/UNIANDES BIG DATA MACHINE LEARNING/Datos Po
 
 #base_train<-merge(train_hogares, train_personas, by="id")
 
-##BASE VICTOR
-
+#-------------------------------------------------------------------------------------------
 ## ----- TRAIN HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base train_personas
 
 cond_jefe_hog_train <- train_personas %>%
   group_by(id) %>%
   filter(Orden ==1) %>%
-  select(Estrato1, P6020, P6040, P6050, P6090, P6210, P6426, P6430, P6800, P7090, P6870)
+  select(P6020, P6040, P6050, P6090, P6210, P6426, P6430, P6800, P7090, P6870)
 
 summary(cond_jefe_hog_train)
 
@@ -33,7 +30,22 @@ train_hogares_final<- left_join(train_hogares, cond_jefe_hog_train)
 colnames(train_hogares_final)
 summary(train_hogares_final)
 
+## variable ingreso y cálculo de pobreza
 
+colnames(train_hogares_final)
+colnames(train_personas)[1:2]
+
+sum_ingresos<-train_personas %>% group_by(id) %>% summarize(Ingtot_hogar=sum(Ingtot,na.rm = TRUE)) 
+summary(sum_ingresos)
+
+train_hogares_final<-left_join(train_hogares_final,sum_ingresos)
+colnames(train_hogares_final)
+
+head(train_hogares_final[c("id","Ingtotugarr","Ingtot_hogar")])
+
+table(train_hogares_final$Pobre) #La mayoría es no pobre
+
+#-------------------------------------------------------------------------------------------
 ## --- TEST HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base test_personas
 
 cond_jefe_hog_test <- test_personas %>%
@@ -47,10 +59,11 @@ summary(cond_jefe_hog_test)
 
 test_hogares_final <- left_join(test_hogares, cond_jefe_hog_test)
 
-colnames(test_hogares)
+colnames(test_hogares_final)
 
+#-------------------------------------------------------------------------------------------
 ## Renombrando Variables
-
+## Para entrenamiento
 train_hogares_final<-train_hogares_final %>% 
   rename(cuartos_hogar = P5000,
          cuartos_hogar_ocup = P5010,
@@ -72,21 +85,9 @@ train_hogares_final<-train_hogares_final %>%
          cabecera_resto = Clase
   )
 
+#-------------------------------------------------------------------------------------------
 
-## variable ingreso y calculo de pobreza
-
-colnames(train_hogares_final)
-colnames(train_personas)[1:2]
-
-sum_ingresos<-train_personas %>% group_by(id) %>% summarize(Ingtot_hogar=sum(Ingtot,na.rm = TRUE)) 
-summary(sum_ingresos)
-
-train_hogares_final<-left_join(train_hogares_final,sum_ingresos)
-colnames(train_hogares_final)
-
-head(train_hogares_final[c("id","Ingtotugarr","Ingtot_hogar")])
-
-table(train_hogares_final$Pobre) #La mayoría es no pobre
+#BASE TRAIN PARA MODELO
 
 #pasamos variables dicotomas a 0 y 1
 
@@ -98,7 +99,7 @@ train_hogares_final<-train_hogares_final %>%
          )
 
 
-#Variables categóricas - Labels Factores
+#Variables categóricas a factores - Labels Factores
 train_hogares_final<-train_hogares_final%>%
   mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
          vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
@@ -124,17 +125,64 @@ base_modelo<-select(train_hogares_final, pobre, Ingtot_hogar, cabecera_resto, vi
                     personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
                     mas_trabajo )
 
-
-
-######MODELO LOGISTICO
-
 ##CREACION DE DUMMYS
 
-
-
 p_load("caret")
-train_dummy<-dummyVars("~ .", data = train_hogares_final)
-head(train_dummy)
+train_dummy<-dummyVars(formula= ~ .+ I(edad^2) - 1, data = base_modelo, fullrank=T) 
+
+#Nueva base con las dummies:
+train_dummy_final<-data.frame(predict(train_dummy, newdata=base_modelo))
+
+#Eliminamos una de las variables dummies de cada variable para que quede como base (multicolinealidad):
+multicol<-lm(formula=pobre.Sí.pobre ~ . , train_dummy_final)
+summary(multicol)
+multicol_NA<-names(multicol$coefficients[is.na(multicol$coefficients)])
+multicol_NA
+train_final<-train_dummy_final%>%
+  data.frame()%>%
+  select(-all_of(multicol_NA))
+
+#Estandarizamos variables numéricas
+glimpse(train_final)
+variables_numericas<-c("Ingtot_hogar", "edad", "tiempo_trabajando", "I.edad.2.")
+escalador<-preProcess(train_final[,variables_numericas],
+                      method = c("center", "scale"))
+glimpse(train_final)
+train_final<- predict(escalador, train_Final[,variables_numericas])
+
+
+
+##Recodificamos la variable pobre porque está en dos columnas:
+train_dummy_final<-train_dummy_final%>%
+  mutate(pobre=factor(pobre.Sí.pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
+
+
+
+train_dummy_final<-train_dummy_final%>%
+  mutate(pobre=pobre, base_modelo)
+
+
+
+
+#Recodificamos pobre porque está en dos columnas:
+train_dummy_final<-train_dummy_final%>%
+  mutate(pobre=factor(pobre.Sí.pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
+
+#Removemos las columnas numéricas de pobre, no pobre
+
+train_dummy_final<-df[,-pobre.Sí.pobre]
+
+summary()
+
+view(train_dummy_final)
+
+set.seed(1234)
+logit_caret_train<-train(pobre ~.- pobre.Sí.pobre - pobre.No.pobre,
+                                 data=train_dummy_final,
+                                 method = "glm",
+                                 trControl=ctrl,
+                                 family ="binomial",
+                                 metric = 'ROC')
 
 
 

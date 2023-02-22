@@ -166,10 +166,11 @@ train_estandarizada<-train_estandarizada%>%
 train_estandarizada<-train_estandarizada%>%
   mutate(pobre=factor(pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
 
+train_estandarizada<-train_estandarizada[-c(1)]
 
 ##MODELOS
 
-
+logit_caret<-train(pobre)
 
   
 modelo_1<-train(x=select(train_estandarizada, -pobre -pobre.No.pobre),

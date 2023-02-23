@@ -4,7 +4,7 @@ rm(list = ls())
 library(readr)
 library(pacman)
 library(stargazer)
-p_load(tidyverse,rvest,skimr, caret, MLmetrics, smotefamily, AER) 
+p_load(tidyverse,rvest,skimr, caret, MLmetrics, smotefamily, AER, stargazer, glmnet) 
 train_hogares <- read_csv("Documents/UNIANDES BIG DATA MACHINE LEARNING/Datos Pobreza Colombia/train_hogares.csv")
 train_personas <- read_csv("Documents/UNIANDES BIG DATA MACHINE LEARNING/Datos Pobreza Colombia/train_personas.csv")
 test_hogares <- read_csv("Documents/UNIANDES BIG DATA MACHINE LEARNING/Datos Pobreza Colombia/test_hogares.csv")
@@ -253,19 +253,36 @@ test_estandarizada[,test_variables_numericas]<- predict(test_escalador, test_est
 mean(test_estandarizada$edad)
 sd(test_estandarizada$edad)
 
-
-
-
-##----------------------------------------------------------------------
-##----------------------------------------------------------------------
-##MODELOS: Bases de datos entrenamiento y testeo: train_estandarizada y test_estandarizada
-
 summary(train_estandarizada)
 glimpse(train_estandarizada)
 str(train_estandarizada)
 
 #Eliminamos observaciones con NA:
 train_estandarizada<-na.omit(train_estandarizada)
+
+
+##----------------------------------------------------------------------
+##----------------------------------------------------------------------
+##MODELOS: Bases de datos entrenamiento y testeo: train_estandarizada y test_estandarizada
+
+
+#RIDGE
+p_load("glmnet")
+#glmnet no admite fórmulas solamente matrices.
+
+base_ridge<-train_estandarizada%>%
+  mutate(y_train= if_else(pobre == "No pobre", 0, 1))
+
+X<-model.matrix(~. -pobre -y_train -1, base_ridge)
+y<-base_ridge$y_train
+
+#Grid para lambda
+ridge<-glmnet(x=X,
+              y=y,
+              alpha=0, #porque es Ridge
+              lambda=0.03)
+
+head(coef(ridge))
 
 set.seed(1234)
 
@@ -276,6 +293,10 @@ modelo_2<-train(x=select(train_estandarizada, -pobre),
                 method="glmnet")
 
 modelo_2
+
+
+##
+
 
 
 #Predicción en entrenamiento y en testeo:

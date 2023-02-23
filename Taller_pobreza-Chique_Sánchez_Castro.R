@@ -85,9 +85,31 @@ train_hogares_final<-train_hogares_final %>%
          cabecera_resto = Clase
   )
 
+##Para testeo:
+test_hogares_final<-test_hogares_final %>% 
+  rename(cuartos_hogar = P5000,
+         cuartos_hogar_ocup = P5010,
+         vivienda_propia = P5090,
+         arriendo = P5140,
+         personas_hogar= Nper,
+         personas_unidad_gasto = Npersug,
+         hombre = P6020,
+         edad = P6040,
+         parentesco_jefe = P6050,
+         entidad_salud =P6090,
+         nivel_educativo = P6210,
+         tiempo_trabajando = P6426,
+         tipo_de_trabajo = P6430,
+         horas_trabajo = P6800,
+         mas_trabajo = P7090,
+         tam_emp = P6870,
+         cabecera_resto = Clase
+  )
+
+
 #-------------------------------------------------------------------------------------------
 
-#BASE TRAIN PARA MODELO
+#TRAIN DICOTOMAS, CATEGORIAS-FACTORES Y CONTINUAS:
 
 #pasamos variables dicotomas a 0 y 1
 
@@ -117,9 +139,40 @@ train_hogares_final<-train_hogares_final%>%
 colnames(train_hogares_final)
 
 summary(train_hogares_final)
+#-------------------------------------------------------------------------------------------
 
+#TEST DICOTOMAS, CATEGORIAS-FACTORES:
+
+#pasamos variables dicotomas a 0 y 1
+
+test_hogares_final<-test_hogares_final %>%
+  mutate(entidad_salud = if_else(entidad_salud == 1, 1, 0), 
+         cabecera_resto = if_else(cabecera_resto == 1, 1, 0),
+         hombre = if_else(hombre == 1, 1, 0),
+         mas_trabajo = if_else(mas_trabajo == 1, 1, 0)
+  )
+
+
+#Variables categóricas a factores - Labels Factores
+test_hogares_final<-test_hogares_final%>%
+  mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
+         vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
+         hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
+         cuartos_hogar=factor(cuartos_hogar),
+         personas_hogar=factor(personas_hogar),
+         entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
+         nivel_educativo=factor(nivel_educativo),
+         tipo_de_trabajo=factor(tipo_de_trabajo),
+         mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo")),
+         tam_emp=factor(tam_emp)
+  )
+
+colnames(test_hogares_final)
+
+summary(test_hogares_final)
+#--------------------------------------------
 ##--------------------------------------------
-###BASE PARA MODELO
+###BASE TRAIN PARA MODELO
 
 base_modelo<-select(train_hogares_final, pobre, Ingtot_hogar, cabecera_resto, vivienda_propia, hombre, cuartos_hogar,
                     personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
@@ -167,18 +220,84 @@ train_estandarizada<-train_estandarizada%>%
   mutate(pobre=factor(pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
 
 train_estandarizada<-train_estandarizada[-c(1)]
+#----------------------------------------------
+##--------------------------------------------
+###BASE TEST PARA MODELO
 
+base_test_modelo<-select(test_hogares_final, cabecera_resto, vivienda_propia, hombre, cuartos_hogar,
+                    personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
+                    mas_trabajo )
+
+##CREACION DE DUMMYS Y ESTANDARIZACION DE VARIABLES CONITNUAS
+
+p_load("caret")
+test_dummy<-dummyVars(formula= ~ .+ I(edad^2) - 1, data = base_test_modelo, fullrank=T) 
+
+#Nueva base con las dummies:
+test_dummy_final<-data.frame(predict(test_dummy, newdata=base_test_modelo))
+
+#Eliminamos una de las variables dummies de cada variable para que quede como base (multicolinealidad):
+multicol_test<-lm(formula=pobre.Sí.pobre ~ . , test_dummy_final)
+summary(multicol)
+multicol_test_NA<-names(multicol$coefficients[is.na(multicol$coefficients)])
+multicol_test_NA
+test_final<-test_dummy_final%>%
+  data.frame()%>%
+  select(-all_of(multicol_test_NA))
+
+#Estandarizamos variables numéricas para Lasso y Ridge:
+
+train_estandarizada<-train_final
+glimpse(train_estandarizada)
+
+variables_numericas<-c("Ingtot_hogar", "edad", "tiempo_trabajando", "I.edad.2.")
+escalador<-preProcess(train_estandarizada[,variables_numericas],
+                      method = c("center", "scale"))
+
+train_estandarizada[,variables_numericas]<- predict(escalador, train_estandarizada[,variables_numericas])
+
+
+##verificamos estandarización: por ejemplo la media de la variable edad es cero y la desviación estandar 1. 
+mean(train_estandarizada$edad)
+sd(train_estandarizada$edad)
+
+##Recodificamos la variable pobre para que quede categórica:
+
+train_estandarizada<-train_estandarizada%>%
+  rename(pobre = pobre.Sí.pobre)
+
+train_estandarizada<-train_estandarizada%>%
+  mutate(pobre=factor(pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
+
+train_estandarizada<-train_estandarizada[-c(1)]
+
+
+##----------------------------------------------------------------------
 ##MODELOS
 
-logit_caret<-train(pobre)
+summary(train_estandarizada)
+glimpse(train_estandarizada)
+sum(is.na(train_estandarizada$pobre))
+
+set.seed(1234)
 
   
-modelo_1<-train(x=select(train_estandarizada, -pobre -pobre.No.pobre),
+modelo_1<-train(pobre ~ .,
+                data=train_estandarizada,
+                method= "glm",
+                trControl = ctrl,
+                family = "binomial",
+                metric = 'ROC')
+  
+  
+modelo_2<-train(x=select(train_estandarizada, -pobre),
                 y=train_estandarizada$pobre,
                 preProcess=NULL,
                 method="glmnet")
 
+#Predicción en entrenamiento y en testeo:
 
+pobre_hat_train<- predict(modelo_2, train_estandarizada)
 
 
 set.seed(1234)

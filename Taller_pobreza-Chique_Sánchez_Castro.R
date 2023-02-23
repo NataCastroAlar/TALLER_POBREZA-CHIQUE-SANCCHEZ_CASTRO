@@ -71,7 +71,6 @@ train_hogares_final<-train_hogares_final %>%
          arriendo = P5140,
          personas_hogar= Nper,
          personas_unidad_gasto = Npersug,
-         ingreso_total_unidad_gasto = Ingtotug,
          hombre = P6020,
          edad = P6040,
          parentesco_jefe = P6050,
@@ -172,9 +171,10 @@ colnames(test_hogares_final)
 summary(test_hogares_final)
 #--------------------------------------------
 ##--------------------------------------------
+
 ###BASE TRAIN PARA MODELO
 
-base_modelo<-select(train_hogares_final, pobre, Ingtot_hogar, cabecera_resto, vivienda_propia, hombre, cuartos_hogar,
+base_modelo<-select(train_hogares_final, pobre, cabecera_resto, vivienda_propia, hombre, cuartos_hogar,
                     personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
                     mas_trabajo )
 
@@ -200,7 +200,7 @@ train_final<-train_dummy_final%>%
 train_estandarizada<-train_final
 glimpse(train_estandarizada)
 
-variables_numericas<-c("Ingtot_hogar", "edad", "tiempo_trabajando", "I.edad.2.")
+variables_numericas<-c("edad", "tiempo_trabajando", "I.edad.2.")
 escalador<-preProcess(train_estandarizada[,variables_numericas],
                       method = c("center", "scale"))
 
@@ -236,64 +236,47 @@ test_dummy<-dummyVars(formula= ~ .+ I(edad^2) - 1, data = base_test_modelo, full
 #Nueva base con las dummies:
 test_dummy_final<-data.frame(predict(test_dummy, newdata=base_test_modelo))
 
-#Eliminamos una de las variables dummies de cada variable para que quede como base (multicolinealidad):
-multicol_test<-lm(formula=pobre.Sí.pobre ~ . , test_dummy_final)
-summary(multicol)
-multicol_test_NA<-names(multicol$coefficients[is.na(multicol$coefficients)])
-multicol_test_NA
-test_final<-test_dummy_final%>%
-  data.frame()%>%
-  select(-all_of(multicol_test_NA))
 
-#Estandarizamos variables numéricas para Lasso y Ridge:
+#Estandarizamos variables numéricas:
 
-train_estandarizada<-train_final
-glimpse(train_estandarizada)
+test_estandarizada<-test_dummy_final
+glimpse(test_estandarizada)
 
-variables_numericas<-c("Ingtot_hogar", "edad", "tiempo_trabajando", "I.edad.2.")
-escalador<-preProcess(train_estandarizada[,variables_numericas],
+test_variables_numericas<-c("edad", "tiempo_trabajando", "I.edad.2.")
+test_escalador<-preProcess(test_estandarizada[,test_variables_numericas],
                       method = c("center", "scale"))
 
-train_estandarizada[,variables_numericas]<- predict(escalador, train_estandarizada[,variables_numericas])
+test_estandarizada[,test_variables_numericas]<- predict(test_escalador, test_estandarizada[,test_variables_numericas])
 
 
 ##verificamos estandarización: por ejemplo la media de la variable edad es cero y la desviación estandar 1. 
-mean(train_estandarizada$edad)
-sd(train_estandarizada$edad)
+mean(test_estandarizada$edad)
+sd(test_estandarizada$edad)
 
-##Recodificamos la variable pobre para que quede categórica:
 
-train_estandarizada<-train_estandarizada%>%
-  rename(pobre = pobre.Sí.pobre)
-
-train_estandarizada<-train_estandarizada%>%
-  mutate(pobre=factor(pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
-
-train_estandarizada<-train_estandarizada[-c(1)]
 
 
 ##----------------------------------------------------------------------
-##MODELOS
+##----------------------------------------------------------------------
+##MODELOS: Bases de datos entrenamiento y testeo: train_estandarizada y test_estandarizada
 
 summary(train_estandarizada)
 glimpse(train_estandarizada)
-sum(is.na(train_estandarizada$pobre))
+str(train_estandarizada)
+
+#Eliminamos observaciones con NA:
+train_estandarizada<-na.omit(train_estandarizada)
 
 set.seed(1234)
 
-  
-modelo_1<-train(pobre ~ .,
-                data=train_estandarizada,
-                method= "glm",
-                trControl = ctrl,
-                family = "binomial",
-                metric = 'ROC')
-  
-  
+
 modelo_2<-train(x=select(train_estandarizada, -pobre),
                 y=train_estandarizada$pobre,
                 preProcess=NULL,
                 method="glmnet")
+
+modelo_2
+
 
 #Predicción en entrenamiento y en testeo:
 
@@ -308,6 +291,14 @@ logit_caret_train<-train(pobre ~.- pobre.Sí.pobre - pobre.No.pobre,
                                  family ="binomial",
                                  metric = 'ROC')
 
+
+
+modelo_1<-train(pobre ~ .,
+                data=train_estandarizada,
+                method= "glm",
+                trControl = ctrl,
+                family = "binomial",
+                metric = 'ROC')
 
 
 ##Gráfica pobres - no pobres

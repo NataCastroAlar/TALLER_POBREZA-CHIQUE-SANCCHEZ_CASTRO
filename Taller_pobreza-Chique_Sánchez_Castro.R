@@ -270,16 +270,17 @@ train_estandarizada<-na.omit(train_estandarizada)
 p_load("glmnet")
 #glmnet no admite fórmulas solamente matrices.
 
+#Creo una variable de 0 y 1 para que no me quede con factore "pobre":
 base_ridge<-train_estandarizada%>%
   mutate(y_train= if_else(pobre == "No pobre", 0, 1))
 
 X<-model.matrix(~. -pobre -y_train -1, base_ridge)
 y<-base_ridge$y_train
 
-#Grid para lambda
+
 ridge<-glmnet(x=X,
               y=y,
-              alpha=0, #porque es Ridge
+              alpha=0, 
               lambda=0.03)
 
 head(coef(ridge))
@@ -294,6 +295,9 @@ modelo_2<-train(x=select(train_estandarizada, -pobre),
 
 modelo_2
 
+#Grid para lambda
+grid=10^seq(10,-2,length=100)
+grid
 
 ##
 

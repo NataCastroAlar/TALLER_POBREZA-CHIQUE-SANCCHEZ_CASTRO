@@ -126,7 +126,6 @@ train_hogares_final<-train_hogares_final%>%
          vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
          hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
          pobre=factor(Pobre, levels=c(0,1), labels=c("No pobre","Sí pobre")),
-         cuartos_hogar=factor(cuartos_hogar),
          personas_hogar=factor(personas_hogar),
          entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
          nivel_educativo=factor(nivel_educativo),
@@ -157,7 +156,6 @@ test_hogares_final<-test_hogares_final%>%
   mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
          vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
          hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
-         cuartos_hogar=factor(cuartos_hogar),
          personas_hogar=factor(personas_hogar),
          entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
          nivel_educativo=factor(nivel_educativo),
@@ -174,7 +172,7 @@ summary(test_hogares_final)
 
 ###BASE TRAIN PARA MODELO
 
-base_modelo<-select(train_hogares_final, pobre, cabecera_resto, vivienda_propia, hombre, cuartos_hogar,
+base_modelo<-select(train_hogares_final, pobre, cabecera_resto, vivienda_propia, hombre,
                     personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
                     mas_trabajo )
 
@@ -219,12 +217,14 @@ train_estandarizada<-train_estandarizada%>%
 train_estandarizada<-train_estandarizada%>%
   mutate(pobre=factor(pobre, levels=c(0,1), labels=c("No pobre", "Si pobre")))
 
-train_estandarizada<-train_estandarizada[-c(1)]
+#Eliminamos las variables que no son iguales a las de la base de datos de test
+train_estandarizada<-train_estandarizada[-c(1, 28:29)]
+
 #----------------------------------------------
 ##--------------------------------------------
 ###BASE TEST PARA MODELO
 
-base_test_modelo<-select(test_hogares_final, cabecera_resto, vivienda_propia, hombre, cuartos_hogar,
+base_test_modelo<-select(test_hogares_final, cabecera_resto, vivienda_propia, hombre,
                     personas_hogar, entidad_salud, nivel_educativo, tipo_de_trabajo, tam_emp,edad, tiempo_trabajando,
                     mas_trabajo )
 
@@ -236,10 +236,19 @@ test_dummy<-dummyVars(formula= ~ .+ I(edad^2) - 1, data = base_test_modelo, full
 #Nueva base con las dummies:
 test_dummy_final<-data.frame(predict(test_dummy, newdata=base_test_modelo))
 
+#Eliminamos una de las variables dummies de cada variable para que quede como base (multicolinealidad):
+multicol_test<-lm(formula=edad ~ . , test_dummy_final)
+summary(multicol_test)
+multicol_NA_test<-names(multicol_test$coefficients[is.na(multicol_test$coefficients)])
+multicol_NA_test
+test_final<-test_dummy_final%>%
+  data.frame()%>%
+  select(-all_of(multicol_NA_test))
+
 
 #Estandarizamos variables numéricas:
 
-test_estandarizada<-test_dummy_final
+test_estandarizada<-test_final
 glimpse(test_estandarizada)
 
 test_variables_numericas<-c("edad", "tiempo_trabajando", "I.edad.2.")
@@ -254,6 +263,8 @@ mean(test_estandarizada$edad)
 sd(test_estandarizada$edad)
 
 summary(train_estandarizada)
+
+
 glimpse(train_estandarizada)
 str(train_estandarizada)
 
@@ -265,10 +276,32 @@ train_estandarizada<-na.omit(train_estandarizada)
 ##----------------------------------------------------------------------
 ##MODELOS: Bases de datos entrenamiento y testeo: train_estandarizada y test_estandarizada
 
-
-#RIDGE
 p_load("glmnet")
 #glmnet no admite fórmulas solamente matrices.
+
+
+##Modelo 2
+
+modelo_2<-train(x=select(train_estandarizada, -pobre),
+                y=train_estandarizada$pobre,
+                preProcess=NULL,
+                method="glmnet")
+
+modelo_2
+
+
+##Predicción con la muestra de entrenamiento y con la muestra de testeo
+y_hat_train<-predict(modelo_2, train_estandarizada)
+y_hat_test<-predict(modelo_2, test_estandarizada)
+
+y_hat_train
+summary(y_hat_test)
+
+#Medidas
+accuracy_train<-Accuracy(pred_train = y_hat_train, y_true = train_estandarizada$pobre)
+accuracy_test<-Accuracy(pred_test = y_hat_train, y_true = test_estandarizada$pobre)
+
+##### -------------------------------------------------
 
 #Creo una variable de 0 y 1 para que no me quede con factore "pobre":
 base_ridge<-train_estandarizada%>%
@@ -284,17 +317,6 @@ ridge<-glmnet(x=X,
               lambda=0.03)
 
 head(coef(ridge))
-
-set.seed(1234)
-
-
-modelo_2<-train(x=select(train_estandarizada, -pobre),
-                y=train_estandarizada$pobre,
-                preProcess=NULL,
-                method="glmnet")
-
-modelo_2
-
 #Grid para lambda
 grid=10^seq(10,-2,length=100)
 grid

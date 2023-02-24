@@ -276,6 +276,7 @@ train_estandarizada<-na.omit(train_estandarizada)
 ##----------------------------------------------------------------------
 ##MODELOS: Bases de datos entrenamiento y testeo: train_estandarizada y test_estandarizada
 
+#MODELO 2
 p_load("glmnet")
 #glmnet no admite fórmulas solamente matrices.
 
@@ -298,7 +299,7 @@ y_hat_test<-predict(modelo_2, test_estandarizada)
 y_hat_train
 summary(y_hat_test)
 
-#Medidas
+#Métricas
 accuracy_train<-Accuracy(y_pred = y_hat_train, y_true = train_estandarizada$pobre)
 accuracy_train
 
@@ -318,12 +319,81 @@ rec_train
 
 
 #F1:mismo peso a precision y recall
-f1_insample<- F1_Score(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
-f1_insample
+f1_train<- F1_Score(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+f1_train
 
 #Data frame métricas
+metricas_train <- data.frame(Modelo = "Regresión logistica", 
+                                 "Muestreo" = NA, 
+                                 "Evaluación" = "Dentro de muestra",
+                                 "Accuracy" = accuracy_train,
+                                 "Precision - PPV" = pre_train,
+                                 "Recall - TPR - Sensitivity" = rec_train,
+                                 "F1" = f1_train)
+
+metricas_train
+## ------------------------------------------------------------------------
+##MODELO CON DESBALANCEO - REMUESTREO - MODELO 3
+
+##Upsampling
+#REvisamos que la variable pobre sea factor:
+class(train_estandarizada$pobre)
+
+#Creamos base upsample
+train_us<-upSample(x=select(train_estandarizada, - pobre),
+                   y=train_estandarizada$pobre,
+                   list=F,
+                   yname="pobre")
+
+table(train_estandarizada$pobre)
+table(train_us$pobre) #me deja 50% 50%
+
+#Modelo 3:
+
+modelo_3<-train(x=select(train_us, -pobre),
+                y=train_us$pobre,
+                preProcess=NULL,
+                method="glmnet")
+
+modelo_3
+
+y_hat_train_us<-predict(modelo_3, train_estandarizada)
+
+##Evalúo sobre base original o real: ###########
+
+#Métricas
+accuracy_train_us<-Accuracy(y_pred = y_hat_train, y_true = train_estandarizada$pobre)
+accuracy_train_us
+
+#accuracy_test<-Accuracy(pred_test = y_hat_train, y_true = test_estandarizada$pobre)
+#accuracy_test
+
+##Precisión: del total de pobres predichos cuántos efectivamente eran pobres
+
+pre_train_us<- Precision(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+pre_train
 
 
+#Recall: de todos los efectivamente pobres cuántos predije bien
+
+rec_train_us<-Recall(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+rec_train_us
+
+
+#F1:mismo peso a precision y recall
+f1_train_us<- F1_Score(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+f1_train_us
+
+#Data frame métricas
+metricas_train_us <- data.frame(Modelo = "Regresión logistica", 
+                             "Muestreo" = "upsampling", 
+                             "Evaluación" = "fuera de muestra",
+                             "Accuracy" = accuracy_train_us,
+                             "Precision - PPV" = pre_train_us,
+                             "Recall - TPR - Sensitivity" = rec_train_us,
+                             "F1" = f1_train)
+
+metricas_train
 
 
 

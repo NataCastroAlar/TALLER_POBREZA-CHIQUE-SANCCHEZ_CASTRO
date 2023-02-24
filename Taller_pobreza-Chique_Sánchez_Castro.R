@@ -292,14 +292,40 @@ modelo_2
 
 ##Predicción con la muestra de entrenamiento y con la muestra de testeo
 y_hat_train<-predict(modelo_2, train_estandarizada)
+
 y_hat_test<-predict(modelo_2, test_estandarizada)
 
 y_hat_train
 summary(y_hat_test)
 
 #Medidas
-accuracy_train<-Accuracy(pred_train = y_hat_train, y_true = train_estandarizada$pobre)
-accuracy_test<-Accuracy(pred_test = y_hat_train, y_true = test_estandarizada$pobre)
+accuracy_train<-Accuracy(y_pred = y_hat_train, y_true = train_estandarizada$pobre)
+accuracy_train
+
+#accuracy_test<-Accuracy(pred_test = y_hat_train, y_true = test_estandarizada$pobre)
+#accuracy_test
+
+##Precisión: del total de pobres predichos cuántos efectivamente eran pobres
+
+pre_train<- Precision(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+pre_train
+
+
+#Recall: de todos los efectivamente pobres cuántos predije bien
+
+rec_train<-Recall(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+rec_train
+
+
+#F1:mismo peso a precision y recall
+f1_insample<- F1_Score(y_pred = y_hat_train, y_true = train_estandarizada$pobre, positive=1)
+f1_insample
+
+#Data frame métricas
+
+
+
+
 
 ##### -------------------------------------------------
 

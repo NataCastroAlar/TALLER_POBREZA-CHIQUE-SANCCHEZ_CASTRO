@@ -127,7 +127,12 @@ test_hogares<-test_hogares %>%
          tam_emp = P6870
   )
 
-mylogit <- glm(Pobre~., data = train_hogares, family = "binomial")
+#Mutación de factores
+
+train_hogares<-train_hogares %>% mutate(Clase=factor(Clase,levels=c(1,2),labels=c("cabecera","resto")),
+                                        vivienda_propia=factor(vivienda_propia,levels=c(1,2,3,4)))
+
+mylogit <- glm(Pobre~ingreso_total_unidad_gasto+hombre+edad+cuartos_hogar, data = train_hogares, family = "binomial")
 summary(mylogit,type="text")
 
 

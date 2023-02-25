@@ -31,6 +31,7 @@ train_personas <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learnin
 test_hogares <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/test_hogares.csv")
 test_personas <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/test_personas.csv")
 sample_submission <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/sample_submission.csv")
+
 ## ----- TRAIN HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base train_personas
 
 cond_jefe_hog_train <- train_personas %>%
@@ -291,6 +292,36 @@ test_hogares_s[, variables_numericas] <- predict(escalador, test_hogares_s[, var
 
 sapply(train_hogares_s, function(x) sum(is.na(x)))  # No tiene NAs
 sapply(test_hogares_s, function(x) sum(is.na(x)))   # No tiene NAs
+
+#############################
+##  2.CLASIFICATION MODEL  ##
+#############################
+
+# Mutación de factor variable pobre
+
+pobre<-train_hogares_final$Pobre # definimos objeto pobre
+
+train_hogares_final<- train_hogares_final%>% mutate(Pobre=factor(Pobre,levels=c(0,1),labels=c("No","Si")))
+
+table(train_hogares_final$Pobre)
+
+# Plot para revisar variables relevantes
+
+plot(Pobre ~ cabecera_resto, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(Pobre ~ vivienda_propia, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(Pobre ~ cuartos_hogar, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(Pobre ~ tipo_de_trabajo, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+
+head(train_hogares_final)
+summary(train_hogares_final)
+
+
+
+mylogit <- glm(Pobre~income+cuartos_hogar+vivienda_propia+edad+horas_trabajo+hombre+nivel_educativo, family = "binomial", data = train_hogares_final)
+summary(mylogit,type="text")
+     
+
+
 
 
 

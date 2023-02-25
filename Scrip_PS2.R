@@ -31,7 +31,6 @@ train_personas <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learnin
 test_hogares <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/test_hogares.csv")
 test_personas <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/test_personas.csv")
 sample_submission <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/sample_submission.csv")
-
 ## ----- TRAIN HOGARES: Extrayendo variables de condiciones del jefe de hogar de la base train_personas
 
 cond_jefe_hog_train <- train_personas %>%
@@ -41,7 +40,7 @@ cond_jefe_hog_train <- train_personas %>%
 
 summary(cond_jefe_hog_train)
 
-## ----- Uniendo condiciones del jefe de hogar con la base train_hogares
+## * Uniendo condiciones del jefe de hogar con la base train_hogares
 
 train_hogares <- left_join(train_hogares, cond_jefe_hog_train)
 
@@ -62,44 +61,98 @@ test_hogares <- left_join(test_hogares, cond_jefe_hog_test)
 
 colnames(test_hogares)
 
-## Eliminando variables con muchos NAs
+## Eliminar las varaibles no relevantes
 
-# * Test_hogares
-test_hogares$P5100 <- NULL 
-test_hogares$P5130 <- NULL
-test_hogares$P5140 <- NULL
+train_hogares <- select(train_hogares, -P5100, -P5130, -P5140)  # En train_hogares
 
-test_hogares<-na.omit(test_hogares)
+test_hogares <- select(test_hogares, -P5100, -P5130, -P5140)  # En test_hogares
 
-# * Train_hogares
-train_hogares$P5100 <- NULL 
-train_hogares$P5130 <- NULL
-train_hogares$P5140 <- NULL
+# * Veamos los NAs de la base
 
-train_hogares<-na.omit(train_hogares)
+sapply(train_hogares, function(x) sum(is.na(x)))
+sapply(test_hogares, function(x) sum(is.na(x)))
 
-head(test_hogares)
-str(test_hogares)
-summary(test_hogares)
-skim(test_hogares)
+## * Imputando datos faltantes
 
-head(train_hogares)
-str(train_hogares)
-summary(train_hogares)
-skim(train_hogares)
+# *** En train_hogares
+train_hogares$P6090 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
 
+train_hogares$P7090 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+train_hogares$P6430 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+train_hogares$P6090[is.na(train_hogares$P6090)] <- 1
+train_hogares$P7090[is.na(train_hogares$P7090)] <- 2
+train_hogares$P6430[is.na(train_hogares$P6430)] <- 4
+train_hogares$P6426[is.na(train_hogares$P6426)] <- mean(train_hogares$P6426, na.rm = TRUE)
+train_hogares$P6800[is.na(train_hogares$P6800)] <- mean(train_hogares$P6800, na.rm = TRUE)
+train_hogares$P6870[is.na(train_hogares$P6870)] <- mean(train_hogares$P6870, na.rm = TRUE)
+
+sapply(train_hogares, function(x) sum(is.na(x)))
+
+# *** En test_hogares
+test_hogares$P6090 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+test_hogares$P7090 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+test_hogares$P6430 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+test_hogares$P6090[is.na(test_hogares$P6090)] <- 1
+test_hogares$P7090[is.na(test_hogares$P7090)] <- 2
+test_hogares$P6430[is.na(test_hogares$P6430)] <- 4
+test_hogares$P6426[is.na(test_hogares$P6426)] <- mean(test_hogares$P6426, na.rm = TRUE)
+test_hogares$P6800[is.na(test_hogares$P6800)] <- mean(test_hogares$P6800, na.rm = TRUE)
+test_hogares$P6870[is.na(test_hogares$P6870)] <- mean(test_hogares$P6870, na.rm = TRUE)
+
+sapply(test_hogares, function(x) sum(is.na(x)))
+
+## ----------------------------------------------------------------------------------------
+## Seleccionando variables para los modelos
+
+train_hogares_final <- train_hogares %>%
+  select(Clase, Ingtotug, P5000, P5090, Nper, Pobre, P6020, P6040, P6090, P6210,
+         P6426, P6430, P6800, P7090,
+         P6870)
+
+test_hogares_final <- test_hogares %>%
+  select(Clase, P5000, P5090, Nper, P6020, P6040, P6090, P6210,
+         P6426, P6430, P6800, P7090,
+         P6870)
+colnames(train_hogares_final)
+colnames(test_hogares_final)
+
+sapply(train_hogares_final, function(x) sum(is.na(x)))
+sapply(test_hogares_final, function(x) sum(is.na(x)))
+
+#-------------------------------------------------------------------------------------------
 ## Renombrando Variables
-
-train_hogares<-train_hogares %>% 
-  rename(cuartos_hogar = P5000,
-         cuartos_hogar_ocup = P5010,
+## Para entrenamiento
+train_hogares_final<-train_hogares_final %>% 
+  rename(cabecera_resto = Clase,
+         income = Ingtotug,
+         cuartos_hogar = P5000,
          vivienda_propia = P5090,
          personas_hogar= Nper,
-         personas_unidad_gasto = Npersug,
-         ingreso_total_unidad_gasto = Ingtotug,
          hombre = P6020,
          edad = P6040,
-         parentesco_jefe = P6050,
          entidad_salud =P6090,
          nivel_educativo = P6210,
          tiempo_trabajando = P6426,
@@ -109,15 +162,16 @@ train_hogares<-train_hogares %>%
          tam_emp = P6870
   )
 
-test_hogares<-test_hogares %>% 
-  rename(cuartos_hogar = P5000,
-         cuartos_hogar_ocup = P5010,
+
+##Para testeo:
+
+test_hogares_final<-test_hogares_final %>% 
+  rename(cabecera_resto = Clase,
+         cuartos_hogar = P5000,
          vivienda_propia = P5090,
          personas_hogar= Nper,
-         personas_unidad_gasto = Npersug,
          hombre = P6020,
          edad = P6040,
-         parentesco_jefe = P6050,
          entidad_salud =P6090,
          nivel_educativo = P6210,
          tiempo_trabajando = P6426,
@@ -126,14 +180,118 @@ test_hogares<-test_hogares %>%
          mas_trabajo = P7090,
          tam_emp = P6870
   )
+#-------------------------------------------------------------------------------------------
 
-#Mutación de factores
+#TRAIN DICOTOMAS, CATEGORIAS-FACTORES Y CONTINUAS:
 
-train_hogares<-train_hogares %>% mutate(Clase=factor(Clase,levels=c(1,2),labels=c("cabecera","resto")),
-                                        vivienda_propia=factor(vivienda_propia,levels=c(1,2,3,4)))
+#pasamos variables dicotomas a 0 y 1
 
-mylogit <- glm(Pobre~ingreso_total_unidad_gasto+hombre+edad+cuartos_hogar, data = train_hogares, family = "binomial")
-summary(mylogit,type="text")
+train_hogares_final<-train_hogares_final %>%
+  mutate(entidad_salud = if_else(entidad_salud == 1, 1, 0), 
+         cabecera_resto = if_else(cabecera_resto == 1, 1, 0),
+         hombre = if_else(hombre == 1, 1, 0),
+         mas_trabajo = if_else(mas_trabajo == 1, 1, 0)
+  )
+
+
+#Variables categóricas a factores - Labels Factores
+train_hogares_final<-train_hogares_final%>%
+  mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
+         vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
+         hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
+         pobre=factor(Pobre, levels=c(0,1), labels=c("No pobre","Sí pobre")),
+         entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
+         nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6,7), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior", "no_sabe")),
+         tipo_de_trabajo=factor(tipo_de_trabajo, levels=c(1,2,3,4,5,6,7,8,9), labels=c("obre_part", "obre_gob", "empl_dom", "cuet_propia", "empleador", "trab_fam", "trab_emp", "jornal", "otro")),
+         mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo"))
+  )
+
+colnames(train_hogares_final)
+
+summary(train_hogares_final)
+#-------------------------------------------------------------------------------------------
+
+#TEST DICOTOMAS, CATEGORIAS-FACTORES:
+
+#pasamos variables dicotomas a 0 y 1
+
+test_hogares_final<-test_hogares_final %>%
+  mutate(entidad_salud = if_else(entidad_salud == 1, 1, 0), 
+         cabecera_resto = if_else(cabecera_resto == 1, 1, 0),
+         hombre = if_else(hombre == 1, 1, 0),
+         mas_trabajo = if_else(mas_trabajo == 1, 1, 0)
+  )
+
+
+#Variables categóricas a factores - Labels Factores
+test_hogares_final<-test_hogares_final%>%
+  mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
+         vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
+         hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
+         entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
+         nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6,7), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior", "no_sabe")),
+         tipo_de_trabajo=factor(tipo_de_trabajo, levels=c(1,2,3,4,5,6,7,8,9), labels=c("obre_part", "obre_gob", "empl_dom", "cuet_propia", "empleador", "trab_fam", "trab_emp", "jornal", "otro")),
+         mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo"))
+  )
+
+colnames(test_hogares_final)
+
+summary(test_hogares_final)
+
+sapply(train_hogares_final, function(x) sum(is.na(x)))
+sapply(test_hogares_final, function(x) sum(is.na(x)))
+
+# Imputar datos faltantes en la variable nivel_educativo
+
+train_hogares_final$nivel_educativo %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+test_hogares_final$nivel_educativo %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+train_hogares_final$nivel_educativo[is.na(train_hogares_final$nivel_educativo)] <- "primaria"
+test_hogares_final$nivel_educativo[is.na(test_hogares_final$nivel_educativo)] <- "primaria"
+
+sapply(train_hogares_final, function(x) sum(is.na(x)))  # No tiene NAs
+sapply(test_hogares_final, function(x) sum(is.na(x)))   # No tiene NAs
+
+#-------------------------------------------------------------------------------------------
+## BASE PARA INCOME REGRESSION MODEL
+
+# Ahora procedemos a dummyficar la base train_hogares_final
+
+train_hogares_s<- model.matrix(~ income + cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
+                                 hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
+                                 tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp, train_hogares_final) %>%
+  as.data.frame()
+
+# Ahora procedemos a dummyficar la base test_hogares_final
+
+test_hogares_s<- model.matrix(~ cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
+                                hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
+                                tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp, test_hogares_final) %>%
+  as.data.frame()
+
+#-------------------------------------------------------------------------------------------
+# Estandarizamos las variables continuas
+
+variables_numericas <- c("cuartos_hogar", "personas_hogar", "edad", "tiempo_trabajando",
+                         "horas_trabajo","tam_emp")
+
+escalador <- preProcess(train_hogares_s[,variables_numericas],
+                        method = c("center", "scale"))
+
+train_hogares_s[, variables_numericas] <- predict(escalador, train_hogares_s[, variables_numericas])
+
+test_hogares_s[, variables_numericas] <- predict(escalador, test_hogares_s[, variables_numericas])
+
+sapply(train_hogares_s, function(x) sum(is.na(x)))  # No tiene NAs
+sapply(test_hogares_s, function(x) sum(is.na(x)))   # No tiene NAs
+
 
 
 

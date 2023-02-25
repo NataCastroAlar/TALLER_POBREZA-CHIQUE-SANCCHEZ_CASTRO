@@ -315,11 +315,89 @@ plot(Pobre ~ tipo_de_trabajo, data=train_hogares_final, col=c(8,2), ylab="Pobre"
 head(train_hogares_final)
 summary(train_hogares_final)
 
-
+#Estimando el modelo Logit
 
 mylogit <- glm(Pobre~income+cuartos_hogar+vivienda_propia+edad+horas_trabajo+hombre+nivel_educativo, family = "binomial", data = train_hogares_final)
 summary(mylogit,type="text")
-     
+
+#Predicción
+pred<-predict(mylogit,newdata = train_hogares_final, type = "response")
+summary(pred)
+
+#Missclasification rates
+
+#Rule 1
+rule<- 1/2
+pred>rule
+table(pobre)
+sum(pred>rule) #nuestro modelo predice 25.508 pobres#
+
+
+sum( (pred>rule)[pobre==0] )/sum(pobre==0) #False positive rate
+sum( (pred>rule)[pobre==1] )/sum(pobre==1) #True positive rate
+
+#Rule 2
+rule<- 1/5
+pred>rule
+table(pobre)
+sum(pred>rule) #nuestro modelo predice 25.508 pobres#
+
+
+sum( (pred>rule)[pobre==0] )/sum(pobre==0) #False positive rate
+sum( (pred>rule)[pobre==1] )/sum(pobre==1) #True positive rate
+
+## ROC curve
+roc <- function(p,y, ...){
+  y <- factor(y)
+  n <- length(p)
+  p <- as.vector(p)
+  Q <- p > matrix(rep(seq(0,1,length=100),n),ncol=100,byrow=TRUE)
+  specificity <- colMeans(!Q[y==levels(y)[1],])
+  sensitivity <- colMeans(Q[y==levels(y)[2],])
+  plot(1-specificity, sensitivity, type="l", ...)
+  abline(a=0,b=1,lty=2,col=8)
+}
+#remplazaria Specificiad y Sensitividad por FPR y TPR
+
+roc(p=pred, y=pobre, bty="n")
+## our 1/5 rule cutoff
+points(x= 1-mean((pred<.2)[pobre==0]), 
+       y=mean((pred>.2)[pobre==1]), 
+       cex=4, pch=20, col='red') 
+## a standard `max prob' (p=.5) rule
+points(x= 1-mean((pred<.5)[pobre==0]), 
+       y=mean((pred>.5)[pobre==1]), 
+       cex=4, pch=20, col='blue') 
+legend("bottomright",fill=c("red","blue"),
+       legend=c("p=1/5","p=1/2"),bty="n",title="cutoff")
+
+## ROC curve-Modified
+
+roc <- function(p,y, ...){
+  y <- factor(y)
+  n <- length(p)
+  p <- as.vector(p)
+  Q <- p > matrix(rep(seq(0,1,length=100),n),ncol=100,byrow=TRUE)
+  FPR <- colMeans(!Q[y==levels(y)[1],])
+  TPR <- colMeans(Q[y==levels(y)[2],])
+  plot(1-FPR, TPR, type="l", ...)
+  abline(a=0,b=1,lty=2,col=8)
+}
+
+roc(p=pred, y=pobre, bty="n")
+## our 1/5 rule cutoff
+points(x= 1-mean((pred<.2)[pobre==0]), 
+       y=mean((pred>.2)[pobre==1]), 
+       cex=4, pch=20, col='red') 
+## a standard `max prob' (p=.5) rule
+points(x= 1-mean((pred<.5)[pobre==0]), 
+       y=mean((pred>.5)[pobre==1]), 
+       cex=4, pch=20, col='blue') 
+legend("bottomright",fill=c("red","blue"),
+       legend=c("p=1/5","p=1/2"),bty="n",title="cutoff")
+
+
+
 
 
 

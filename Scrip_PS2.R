@@ -129,12 +129,12 @@ sapply(test_hogares, function(x) sum(is.na(x)))
 ## Seleccionando variables para los modelos
 
 train_hogares_final <- train_hogares %>%
-  select(Clase, Ingtotug, P5000, P5090, Nper, Pobre, P6020, P6040, P6090, P6210,
+  select(id, Clase, Ingtotug, P5000, P5090, Nper, Pobre, P6020, P6040, P6090, P6210,
          P6426, P6430, P6800, P7090,
          P6870)
 
 test_hogares_final <- test_hogares %>%
-  select(Clase, P5000, P5090, Nper, P6020, P6040, P6090, P6210,
+  select(id, Clase, P5000, P5090, Nper, P6020, P6040, P6090, P6210,
          P6426, P6430, P6800, P7090,
          P6870)
 colnames(train_hogares_final)
@@ -347,31 +347,6 @@ sum( (pred>rule)[pobre==0] )/sum(pobre==0) #False positive rate
 sum( (pred>rule)[pobre==1] )/sum(pobre==1) #True positive rate
 
 ## ROC curve
-roc <- function(p,y, ...){
-  y <- factor(y)
-  n <- length(p)
-  p <- as.vector(p)
-  Q <- p > matrix(rep(seq(0,1,length=100),n),ncol=100,byrow=TRUE)
-  specificity <- colMeans(!Q[y==levels(y)[1],])
-  sensitivity <- colMeans(Q[y==levels(y)[2],])
-  plot(1-specificity, sensitivity, type="l", ...)
-  abline(a=0,b=1,lty=2,col=8)
-}
-#remplazaria Specificiad y Sensitividad por FPR y TPR
-
-roc(p=pred, y=pobre, bty="n")
-## our 1/5 rule cutoff
-points(x= 1-mean((pred<.2)[pobre==0]), 
-       y=mean((pred>.2)[pobre==1]), 
-       cex=4, pch=20, col='red') 
-## a standard `max prob' (p=.5) rule
-points(x= 1-mean((pred<.5)[pobre==0]), 
-       y=mean((pred>.5)[pobre==1]), 
-       cex=4, pch=20, col='blue') 
-legend("bottomright",fill=c("red","blue"),
-       legend=c("p=1/5","p=1/2"),bty="n",title="cutoff")
-
-## ROC curve-Modified
 
 roc <- function(p,y, ...){
   y <- factor(y)
@@ -396,6 +371,70 @@ points(x= 1-mean((pred<.5)[pobre==0]),
 legend("bottomright",fill=c("red","blue"),
        legend=c("p=1/5","p=1/2"),bty="n",title="cutoff")
 
+#Dumificamos variables
+
+p_load("caret")
+dmy<- dummyVars("~.", data=train_hogares_final)
+head(dmy)
+
+train_hogares_final<- data.frame(predict(dmy, newdata=train_hogares_final))
+head(train_hogares_final)
+
+dmy<- dummyVars("~.", data=test_hogares_final)
+head(dmy)
+
+test_hogares_final<- data.frame(predict(dmy, newdata=test_hogares_final))
+head(test_hogares_final)
+
+#Out of sample prediction. 
+
+train_hogares_final<- train_hogares_final  %>% mutate(pobre=factor(Pobre.Si,levels=c(0,1),labels=c("No","Si")))
+
+# Logit Caret
+
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...)) 
+
+
+
+ctrl<- trainControl(method = "cv",
+                    number = 5,
+                    summaryFunction = fiveStats, 
+                    classProbs = TRUE,
+                    verbose=FALSE,
+                    savePredictions = T)
+
+set.seed(1410)
+
+mylogit_caret <- train(pobre~cabecera_resto.resto+cuartos_hogar+
+                                       vivienda_propia.propia_pagada+vivienda_propia.propia_pagando+
+                                       vivienda_propia.arriendo+vivienda_propia.usufructo+vivienda_propia.posesión_sin_título+
+                                       vivienda_propia.otra+personas_hogar+hombre.hombre+edad+nivel_educativo.secundaria+horas_trabajo, 
+                       data = train_hogares_final, 
+                       method = "glm",
+                       trControl = ctrl,
+                       family = "binomial", 
+                       metric = 'ROC')
+
+
+
+
+mylogit_caret
+
+#Uniendo base con sample submision
+
+test_hogares_pred <- left_join(test_hogares_final, sample_submission)
+
+colnames(test_hogares_pred)
+
+
+predictTest_logit <- data.frame(predict(mylogit_caret, newdata = test_hogares_final, type = "prob"),         ## predicted class probabilities
+  pred = predict(mylogit_caret, newdata = test_hogares_final, type = "raw")    ## predicted class labels
+)
+
+
+head(predictTest_logit)
+
+table(predictTest_logit$pred)
 
 
 

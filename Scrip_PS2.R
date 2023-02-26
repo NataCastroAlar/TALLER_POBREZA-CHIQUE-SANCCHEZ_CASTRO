@@ -327,10 +327,6 @@ summary(mylogit,type="text")
 pred<-predict(mylogit,newdata = train_hogares_s, type = "response")
 summary(pred)
 
-#Predicción test
-pred_test<-predict(mylogit,newdata = test_hogares_final, type = "response")
-summary(pred_test)
-
 #Missclasification rates
 
 #Rule 1
@@ -378,24 +374,7 @@ points(x= 1-mean((pred<.5)[pobre==0]),
 legend("bottomright",fill=c("red","blue"),
        legend=c("p=1/5","p=1/2"),bty="n",title="cutoff")
 
-#Dumificamos variables
 
-p_load("caret")
-dmy<- dummyVars("~.", data=train_hogares_final)
-head(dmy)
-
-train_hogares_final<- data.frame(predict(dmy, newdata=train_hogares_final))
-head(train_hogares_final)
-
-dmy<- dummyVars("~.", data=test_hogares_final)
-head(dmy)
-
-test_hogares_final<- data.frame(predict(dmy, newdata=test_hogares_final))
-head(test_hogares_final)
-
-#Out of sample prediction. 
-
-train_hogares_final<- train_hogares_final  %>% mutate(pobre=factor(Pobre.Si,levels=c(0,1),labels=c("No","Si")))
 
 # Logit Caret
 
@@ -441,7 +420,7 @@ summary(predictTest_logit)
 
 test_hogares <- cbind(test_hogares,predictTest_logit)
 test_hogares <- rename(test_hogares, pobre = pred)
-test_hogares <- rename(test_hogares, pobre = pred)
+
 
 sample_submission_1 <- test_hogares %>% 
   select(id, pobre)

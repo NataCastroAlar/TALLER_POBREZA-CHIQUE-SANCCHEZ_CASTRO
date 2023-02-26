@@ -1,5 +1,6 @@
 # Taller 2
-
+# En este modelo se regulariza y se cambia la forma de estimar. se sigue el cuaderno del profesor
+# Este modelo correo bien, pero solamente tiene una especificacion muy simple
 # Limpiar todo
 
 rm(list = ls())
@@ -57,35 +58,12 @@ test_hogares <- select(test_hogares, -P5100, -P5130, -P5140)  # En test_hogares
 
 # * Veamos los NAs de la base
 
+train_hogares <- na.omit(train_hogares)
+
 sapply(train_hogares, function(x) sum(is.na(x)))
 sapply(test_hogares, function(x) sum(is.na(x)))
 
 ## * Imputando datos faltantes
-
-# *** En train_hogares
-train_hogares$P6090 %>%
-  table(useNA = "ifany") %>%
-  prop.table() %>%
-  round(3)*100
-
-train_hogares$P7090 %>%
-  table(useNA = "ifany") %>%
-  prop.table() %>%
-  round(3)*100
-
-train_hogares$P6430 %>%
-  table(useNA = "ifany") %>%
-  prop.table() %>%
-  round(3)*100
-
-train_hogares$P6090[is.na(train_hogares$P6090)] <- 1
-train_hogares$P7090[is.na(train_hogares$P7090)] <- 2
-train_hogares$P6430[is.na(train_hogares$P6430)] <- 4
-train_hogares$P6426[is.na(train_hogares$P6426)] <- mean(train_hogares$P6426, na.rm = TRUE)
-train_hogares$P6800[is.na(train_hogares$P6800)] <- mean(train_hogares$P6800, na.rm = TRUE)
-train_hogares$P6870[is.na(train_hogares$P6870)] <- mean(train_hogares$P6870, na.rm = TRUE)
-
-sapply(train_hogares, function(x) sum(is.na(x)))
 
 # *** En test_hogares
 test_hogares$P6090 %>%
@@ -148,7 +126,7 @@ train_hogares_final<-train_hogares_final %>%
          horas_trabajo = P6800,
          mas_trabajo = P7090,
          tam_emp = P6870
-  )
+         )
 
 
 ##Para testeo:
@@ -167,7 +145,7 @@ test_hogares_final<-test_hogares_final %>%
          horas_trabajo = P6800,
          mas_trabajo = P7090,
          tam_emp = P6870
-  )
+         )
 #-------------------------------------------------------------------------------------------
 
 #TRAIN DICOTOMAS, CATEGORIAS-FACTORES Y CONTINUAS:
@@ -189,10 +167,10 @@ train_hogares_final<-train_hogares_final%>%
          hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
          pobre=factor(Pobre, levels=c(0,1), labels=c("No pobre","Sí pobre")),
          entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
-         nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6,7), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior", "no_sabe")),
+         nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior")),
          tipo_de_trabajo=factor(tipo_de_trabajo, levels=c(1,2,3,4,5,6,7,8,9), labels=c("obre_part", "obre_gob", "empl_dom", "cuet_propia", "empleador", "trab_fam", "trab_emp", "jornal", "otro")),
          mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo"))
-  )
+         )
 
 colnames(train_hogares_final)
 
@@ -217,7 +195,7 @@ test_hogares_final<-test_hogares_final%>%
          vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
          hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
          entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
-         nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6,7), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior", "no_sabe")),
+         nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior")),
          tipo_de_trabajo=factor(tipo_de_trabajo, levels=c(1,2,3,4,5,6,7,8,9), labels=c("obre_part", "obre_gob", "empl_dom", "cuet_propia", "empleador", "trab_fam", "trab_emp", "jornal", "otro")),
          mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo"))
   )
@@ -244,6 +222,9 @@ test_hogares_final$nivel_educativo %>%
 train_hogares_final$nivel_educativo[is.na(train_hogares_final$nivel_educativo)] <- "primaria"
 test_hogares_final$nivel_educativo[is.na(test_hogares_final$nivel_educativo)] <- "primaria"
 
+train_hogares_final <- train_hogares_final %>% mutate(edad_2 = I(edad^2))
+test_hogares_final <- test_hogares_final %>% mutate(edad_2 = I(edad^2))
+
 sapply(train_hogares_final, function(x) sum(is.na(x)))  # No tiene NAs
 sapply(test_hogares_final, function(x) sum(is.na(x)))   # No tiene NAs
 
@@ -252,23 +233,20 @@ sapply(test_hogares_final, function(x) sum(is.na(x)))   # No tiene NAs
 
 # Ahora procedemos a dummyficar la base train_hogares_final
 
-train_hogares_s<- model.matrix(~ income + cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
-                                 hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
-                                 tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp, train_hogares_final) %>%
+train_hogares_s<- model.matrix(~ income + cabecera_resto + hombre + edad + edad_2 + nivel_educativo + tiempo_trabajando +
+                                 tipo_de_trabajo + horas_trabajo + tam_emp, train_hogares_final) %>%
   as.data.frame()
 
 # Ahora procedemos a dummyficar la base test_hogares_final
 
-test_hogares_s<- model.matrix(~ cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
-                                hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
-                                tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp, test_hogares_final) %>%
+test_hogares_s<- model.matrix(~ cabecera_resto + hombre + edad + edad_2 + nivel_educativo + tiempo_trabajando +
+                                tipo_de_trabajo + horas_trabajo + tam_emp, test_hogares_final) %>%
   as.data.frame()
 
 #-------------------------------------------------------------------------------------------
 # Estandarizamos las variables continuas
 
-variables_numericas <- c("cuartos_hogar", "personas_hogar", "edad", "tiempo_trabajando",
-                         "horas_trabajo","tam_emp")
+variables_numericas <- c("edad", "edad_2", "tiempo_trabajando", "horas_trabajo","tam_emp")
 
 escalador <- preProcess(train_hogares_s[,variables_numericas],
                         method = c("center", "scale"))
@@ -279,20 +257,29 @@ test_hogares_s[, variables_numericas] <- predict(escalador, test_hogares_s[, var
 
 sapply(train_hogares_s, function(x) sum(is.na(x)))  # No tiene NAs
 sapply(test_hogares_s, function(x) sum(is.na(x)))   # No tiene NAs
+#------------------------------------------------------------------------------------------
+# Quitamos de la base la variable nivel_educativono_sabe
+
+#train_hogares_s <- select(train_hogares_s, -nivel_educativono_sabe)  # En train_hogares_s
+
+#test_hogares_s <- select(test_hogares_s, -nivel_educativono_sabe)  # En test_hogares_s
+
 
 #-------------------------------------------------------------------------------------------
 # MODELO INCOME REGRESSION
 
-#y_train <- log(train_hogares_s[, "income"])
-y_train <- train_hogares_s$income
-X_train <- select(train_hogares_s, -income)
-X_test <- test_hogares_s
 
-# Regresion Lineal
+y <- train_hogares_final$income
+X <- model.matrix(~ cabecera_resto + hombre + edad + edad_2 + nivel_educativo + tiempo_trabajando +
+                    tipo_de_trabajo + horas_trabajo + tam_emp -1, train_hogares_final)
 
-train2 <- cbind(y_train, X_train)
+head(X)
 
-modelo_reg <- lm("y_train ~ -1 + .", data = train2)
+
+
+# ------- Regresion Lineal -------------------
+
+modelo_reg <- lm("income ~ -1 +.", data = train_hogares_s)
 summary(modelo_reg)
 
 df_coeficientes_reg <- modelo_reg$coefficients %>%
@@ -309,4 +296,225 @@ df_coeficientes_reg %>%
        y = "Coeficientes") +
   theme_bw()
 
+y_hat_reg <- predict(modelo_reg, newdata = test_hogares_s)
 
+# ------ Regresion Ridge ---------------------
+grid=10^seq(10,-2,length=100)
+grid
+
+y_train <- train_hogares_s$income
+X_train <- select(train_hogares_s, -income)
+X_test <- test_hogares_s
+
+ridge1<-glmnet(x=X_train,
+               y=y_train,
+               alpha=0, #0 is ridge, 1 is lasso
+               lambda=grid,
+               standardize = FALSE)
+coef(ridge1)
+
+# poniendo los coeficientes en un data frame
+
+#Put coefficients in a data frame, except the intercept
+coefs_ridge<-data.frame(t(as.matrix(coef(ridge1)))) %>% select(-X.Intercept.)
+#add the lambda grid to to data frame
+coefs_ridge<- coefs_ridge %>% mutate(lambda=grid)              
+
+#ggplot friendly format
+coefs_ridge<- coefs_ridge %>% pivot_longer(cols=!lambda,
+                                           names_to="variables",
+                                           values_to="coefficients")
+
+
+
+ggplot(data=coefs_ridge, aes(x = lambda, y = coefficients, color = variables)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10",
+                                  scales::math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes Ridge", x = "Lambda", y = "Coeficientes") +
+  theme_bw() +
+  theme(legend.position="bottom")
+
+#-------------- Regresion Lasso ---------------------------------------
+
+grid=10^seq(10,-2,length=100)
+
+lasso1<-glmnet(x=X_train,
+               y=y_train,
+               alpha=1, #0 is ridge, 1 is lasso
+               lambda=grid,
+               standardize = FALSE)
+
+#Put coefficients in a data frame, except the intercept
+coefs_lasso<-data.frame(t(as.matrix(coef(lasso1)))) %>% select(-X.Intercept.)
+#add the lambda grid to to data frame
+coefs_lasso<- coefs_lasso %>% mutate(lambda=grid)              
+
+#ggplot friendly format
+coefs_lasso<- coefs_lasso %>% pivot_longer(cols=!lambda,
+                                           names_to="variables",
+                                           values_to="coefficients")
+
+
+
+ggplot(data=coefs_lasso, aes(x = lambda, y = coefficients, color = variables)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10",
+                                  scales::math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes Lasso", x = "Lambda", y = "Coeficientes") +
+  theme_bw() +
+  theme(legend.position="bottom")
+
+
+## ------- Elejimos los Hiper parametros -----------------
+
+# Minimos Cuadrados Ordinario (OLS)
+#modelo_reg <- lm("income ~ -1 +.", data = train_hogares_s)
+p_load(caret)
+
+set.seed(123)
+fitControl <- trainControl(## 5-fold CV, 10 better
+  method = "cv",
+  number = 5)
+
+
+fmla<-formula(income ~ cabecera_resto + edad + edad_2 + hombre + nivel_educativo + tiempo_trabajando +
+                tipo_de_trabajo + horas_trabajo + tam_emp)
+linear_reg<-train(fmla,
+                  data=train_hogares_final,
+                  method = 'lm', 
+                  trControl = fitControl,
+                  preProcess = c("center", "scale")
+) 
+
+
+linear_reg
+summary(linear_reg)
+
+#------ Modelo Ridge --------------------------#
+
+ridge<-train(fmla,
+             data=train_hogares_final,
+             method = 'glmnet', 
+             trControl = fitControl,
+             tuneGrid = expand.grid(alpha = 0, #Ridge
+                                    lambda = seq(0.001,0.02,by = 0.001)),
+             preProcess = c("center", "scale")
+) 
+
+plot(ridge$results$lambda,
+     ridge$results$RMSE,
+     xlab="lambda",
+     ylab="Root Mean-Squared Error (RMSE)"
+)
+
+ridge$bestTune
+
+coef_ridge<-coef(ridge$finalModel, ridge$bestTune$lambda)
+coef_ridge
+
+modelo_ridge<-train(fmla,
+             data=train_hogares_final,
+             method = 'glmnet', 
+             trControl = fitControl,
+             tuneGrid = expand.grid(alpha = 0, #Ridge
+                                    lambda = 0.02),
+             preProcess = c("center", "scale")
+) 
+
+y_hat_ridge <- predict(modelo_ridge, newdata = test_hogares_final)
+
+## Modelo Lasso
+
+lasso<-train(fmla,
+             data=train_hogares_final,
+             method = 'glmnet', 
+             trControl = fitControl,
+             tuneGrid = expand.grid(alpha = 1, #lasso
+                                    lambda = seq(0.001,0.02,by = 0.001)),
+             preProcess = c("center", "scale")
+) 
+
+plot(lasso$results$lambda,
+     lasso$results$RMSE,
+     xlab="lambda",
+     ylab="Root Mean-Squared Error (RMSE) Lasso"
+)
+
+lasso$bestTune
+
+coef_lasso<-coef(lasso$finalModel, lasso$bestTune$lambda)
+coef_lasso
+
+modelo_lasso<-train(fmla,
+             data=train_hogares_final,
+             method = 'glmnet', 
+             trControl = fitControl,
+             tuneGrid = expand.grid(alpha = 1, #lasso
+                                    lambda = 0.02),
+             preProcess = c("center", "scale")
+) 
+
+y_hat_lasso <- predict(modelo_lasso, newdata = test_hogares_final)
+
+## Elastic Net
+
+EN<-train(fmla,
+          data=train_hogares_final,
+          method = 'glmnet', 
+          trControl = fitControl,
+          tuneGrid = expand.grid(alpha = seq(0,1,by = 0.1), #grilla de alpha
+                                 lambda = seq(0.001,0.02,by = 0.001)),
+          preProcess = c("center", "scale")
+) 
+
+EN$bestTune
+
+coef_EN<-coef(EN$finalModel,EN$bestTune$lambda)
+coef_EN
+
+modelo_EN<-train(fmla,
+          data=train_hogares_final,
+          method = 'glmnet', 
+          trControl = fitControl,
+          tuneGrid = expand.grid(alpha = 1, #grilla de alpha
+                                 lambda = 0.02),
+          preProcess = c("center", "scale")
+) 
+
+y_hat_EN <- predict(modelo_EN, newdata = test_hogares_final)
+
+## Tabla: Coeficientes de los modelos
+
+coefs_df<-cbind(coef(linear_reg$finalModel),as.matrix(coef_ridge),as.matrix(coef_lasso),as.matrix(coef_EN))
+colnames(coefs_df)<-c("OLS","RIDGE","LASSO","ELASTIC_NET")
+round(coefs_df,4)
+
+RMSE_df<-cbind(linear_reg$results$RMSE,ridge$results$RMSE[which.min(ridge$results$lambda)],lasso$results$RMSE[which.min(lasso$results$lambda)],EN$results$RMSE[which.min(EN$results$lambda)])
+colnames(RMSE_df)<-c("OLS","RIDGE","LASSO","EN")
+RMSE_df
+
+#-----------------------------------------------------
+
+# Estimando pobreza desde las predicciones
+
+test_hogares <- cbind(test_hogares, y_hat_EN)
+
+test_hogares <- test_hogares %>% mutate(ingreso = y_hat_EN)
+#test_hogares <- test_hogares %>% mutate(ingreso = exp(y_hat_out1))
+
+test_hogares<- test_hogares %>% mutate(pobre1=ifelse(ingreso<Lp,1,0))
+
+pobre <- test_hogares$pobre1
+
+sample_submission <- select(sample_submission, -pobre)
+
+sample_submission <- cbind(sample_submission, pobre)
+
+table(sample_submission$pobre)

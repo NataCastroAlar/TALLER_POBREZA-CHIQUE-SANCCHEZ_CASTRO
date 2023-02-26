@@ -436,7 +436,12 @@ sample_submission_1 <- sample_submission_1 %>%
 
 setwd("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data")
 
-write.csv(sample_submission_1, file="sample_submission22.csv")
+write.csv(sample_submission_1, file="sample_submission.csv")
+
+
+
+
+
 
 
 

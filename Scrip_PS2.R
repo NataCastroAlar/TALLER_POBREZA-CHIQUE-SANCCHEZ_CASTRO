@@ -18,10 +18,12 @@
 
 rm(list = ls())
 
+install.packages("caret")
+
 # Librerias
 
 library("pacman", "readr", "skimr")
-
+library(caret)
 p_load("tidyverse", "readr", "skimr")
 
 # Importar datos
@@ -267,7 +269,7 @@ sapply(test_hogares_final, function(x) sum(is.na(x)))   # No tiene NAs
 
 train_hogares_s<- model.matrix(~ income + cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
                                  hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
-                                 tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp, train_hogares_final) %>%
+                                 tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp + pobre, train_hogares_final) %>%
   as.data.frame()
 
 # Ahora procedemos a dummyficar la base test_hogares_final
@@ -301,28 +303,33 @@ sapply(test_hogares_s, function(x) sum(is.na(x)))   # No tiene NAs
 
 pobre<-train_hogares_final$Pobre # definimos objeto pobre
 
-train_hogares_final<- train_hogares_final%>% mutate(Pobre=factor(Pobre,levels=c(0,1),labels=c("No","Si")))
+train_hogares_s<- train_hogares_s%>% mutate(pobre=factor(pobre,levels=c(0,1),labels=c("No","Si")))
 
-table(train_hogares_final$Pobre)
+table(train_hogares_s$pobre)
 
 # Plot para revisar variables relevantes
 
-plot(Pobre ~ cabecera_resto, data=train_hogares_final, col=c(8,2), ylab="Pobre")
-plot(Pobre ~ vivienda_propia, data=train_hogares_final, col=c(8,2), ylab="Pobre")
-plot(Pobre ~ cuartos_hogar, data=train_hogares_final, col=c(8,2), ylab="Pobre")
-plot(Pobre ~ tipo_de_trabajo, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ cabecera_resto, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ vivienda_propia, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ cuartos_hogar, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ tipo_de_trabajo, data=train_hogares_final, col=c(8,2), ylab="Pobre")
 
-head(train_hogares_final)
-summary(train_hogares_final)
+head(train_hogares_s)
+summary(train_hogares_s)
 
 #Estimando el modelo Logit
 
-mylogit <- glm(Pobre~income+cuartos_hogar+vivienda_propia+edad+horas_trabajo+hombre+nivel_educativo, family = "binomial", data = train_hogares_final)
+mylogit <- glm(pobre~cabecera_restocabecera+cuartos_hogar+vivienda_propiapropia_pagando+vivienda_propiaarriendo+vivienda_propiausufructo+
+                 +vivienda_propiaposesión_sin_título+vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+horas_trabajo, family = "binomial", data = train_hogares_s)
 summary(mylogit,type="text")
 
-#Predicción
-pred<-predict(mylogit,newdata = train_hogares_final, type = "response")
+#Predicción train
+pred<-predict(mylogit,newdata = train_hogares_s, type = "response")
 summary(pred)
+
+#Predicción test
+pred_test<-predict(mylogit,newdata = test_hogares_final, type = "response")
+summary(pred_test)
 
 #Missclasification rates
 
@@ -405,11 +412,11 @@ ctrl<- trainControl(method = "cv",
 
 set.seed(1410)
 
-mylogit_caret <- train(pobre~cabecera_resto.resto+cuartos_hogar+
-                                       vivienda_propia.propia_pagada+vivienda_propia.propia_pagando+
-                                       vivienda_propia.arriendo+vivienda_propia.usufructo+vivienda_propia.posesión_sin_título+
-                                       vivienda_propia.otra+personas_hogar+hombre.hombre+edad+nivel_educativo.secundaria+horas_trabajo, 
-                       data = train_hogares_final, 
+mylogit_caret <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+                         vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                         vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                         vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+horas_trabajo, 
+                       data = train_hogares_s, 
                        method = "glm",
                        trControl = ctrl,
                        family = "binomial", 
@@ -420,27 +427,37 @@ mylogit_caret <- train(pobre~cabecera_resto.resto+cuartos_hogar+
 
 mylogit_caret
 
-#Uniendo base con sample submision
+#Out of sample prediction
 
-test_hogares_pred <- left_join(test_hogares_final, sample_submission)
-
-colnames(test_hogares_pred)
-
-
-predictTest_logit <- data.frame(predict(mylogit_caret, newdata = test_hogares_final, type = "prob"),         ## predicted class probabilities
-  pred = predict(mylogit_caret, newdata = test_hogares_final, type = "raw")    ## predicted class labels
+predictTest_logit <- data.frame (
+  predict(mylogit_caret, newdata = test_hogares_s, type="prob"),
+  pred = predict(mylogit_caret, newdata = test_hogares_s, type = "raw")
 )
 
-
 head(predictTest_logit)
+summary(predictTest_logit)
 
-table(predictTest_logit$pred)
+#Sample submision 
 
+test_hogares <- cbind(test_hogares,predictTest_logit)
+test_hogares <- rename(test_hogares, pobre = pred)
+test_hogares <- rename(test_hogares, pobre = pred)
 
+sample_submission_1 <- test_hogares %>% 
+  select(id, pobre)
 
+table(sample_submission_1$pobre)
+table(sample_submission$pobre)
+table(train_hogares$Pobre)
 
+library(dplyr)
 
+sample_submission_1 <- sample_submission_1 %>%
+  mutate(pobre = ifelse(pobre=="Si", 1,0))
 
+setwd("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data")
+
+write.csv(sample_submission_1, file="sample_submission5.csv")
 
 
 

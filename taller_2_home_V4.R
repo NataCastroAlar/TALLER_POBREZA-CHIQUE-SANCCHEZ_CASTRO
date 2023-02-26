@@ -1,7 +1,6 @@
 # Taller 2
 # En este modelo se regulariza y se cambia la forma de estimar. se sigue el cuaderno del profesor
-# Este modelo correo bien, pero solamente tiene una especificacion muy simple. En este Scrip se hace
-# modelos mas complejos
+# En este Script se hace modelos mas complejos
 # Limpiar todo
 
 rm(list = ls())

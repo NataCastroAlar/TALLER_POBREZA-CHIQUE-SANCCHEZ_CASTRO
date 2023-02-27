@@ -472,7 +472,7 @@ summary(predictTest_logit) ## PENDIENTE CON BASE DE Y_HAT
 
 #Sample submision model 1 
 
-test_hogares <- cbind(test_hogares,predictTest_logit)
+test_hogares <- cbind(test_hogares,predictTest_logit2)
 test_hogares <- rename(test_hogares, pobre = pred)
 
 
@@ -490,8 +490,7 @@ sample_submission_1 <- sample_submission_1 %>%
 
 setwd("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data")
 
-write.csv(sample_submission_1, file="sample_submissionM1.csv")
-
+write.csv(sample_submission_1, file="sample_submissionM1.csv", row.names = F)
 
 #------LDA-----#
 
@@ -800,8 +799,39 @@ predictors<-c("cabecera_restocabecera","cuartos_hogar",
                 "tipo_de_trabajoempleador","horas_trabajo")
 head( training[predictors])
 
+smote_output = SMOTE(X = training[predictors],
+                    target = training$pobre)
+smote_data = smote_output$data
+table(training$pobre)
+table(smote_data$class)
 
+set.seed(1410)
 
+mylogit_lasso_smote <- train(class~cabecera_restocabecera+cuartos_hogar+
+                                     vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                                     vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                                     vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
+                                     nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
+                                     tipo_de_trabajoempleador+horas_trabajo, 
+                                   data = smote_data, 
+                                   method = "glmnet",
+                                   trControl = ctrl,
+                                   family = "binomial", 
+                                   metric = "ROC",
+                                   tuneGrid = expand.grid(alpha = 0,lambda=lambda_grid), 
+                                   preProcess = c("center", "scale")
+)
+mylogit_lasso_smote
 
+class(mylogit_caret)
+class(mylogit_lasso_roc)
+testResults <- data.frame(pobre = testing$pobre)
 
+testResults$logit<- predict(mylogit_caret,
+                            newdata = testing,
+                            type ="prob")[,1]
+
+testResults$logit2<- predict(mylogit_caret2,
+                            newdata = testing,
+                            type ="prob")[,1]
 

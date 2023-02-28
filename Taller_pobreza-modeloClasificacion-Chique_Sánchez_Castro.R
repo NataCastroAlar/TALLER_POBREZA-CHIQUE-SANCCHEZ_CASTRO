@@ -40,7 +40,7 @@ sample_submission <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Lear
 cond_jefe_hog_train <- train_personas %>%
   group_by(id) %>%
   filter(Orden ==1) %>%
-  select(Estrato1, P6020, P6040, P6050, P6090, P6210, P6426, P6430, P6800, P7090, P6870)
+  select(Estrato1, P6020, P6040, P6050, P6090, P6100, P6210, P6240, P6426, P6430, P6800, P7090, P6870)
 
 summary(cond_jefe_hog_train)
 
@@ -55,7 +55,7 @@ colnames(train_hogares)
 cond_jefe_hog_test <- test_personas %>%
   group_by(id) %>%
   filter(Orden ==1) %>%
-  select(P6020, P6040, P6050, P6090, P6210, P6426, P6430, P6800, P7090, P6870)
+  select(P6020, P6040, P6050, P6090, P6100, P6210, P6240, P6426, P6430, P6800, P7090, P6870)
 
 summary(cond_jefe_hog_test)
 
@@ -71,6 +71,7 @@ train_hogares <- select(train_hogares, -P5100, -P5130, -P5140)  # En train_hogar
 
 test_hogares <- select(test_hogares, -P5100, -P5130, -P5140)  # En test_hogares
 
+
 # * Veamos los NAs de la base
 
 sapply(train_hogares, function(x) sum(is.na(x)))
@@ -80,6 +81,16 @@ sapply(test_hogares, function(x) sum(is.na(x)))
 
 # *** En train_hogares
 train_hogares$P6090 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+train_hogares$P6100 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+train_hogares$P6240 %>%
   table(useNA = "ifany") %>%
   prop.table() %>%
   round(3)*100
@@ -95,6 +106,8 @@ train_hogares$P6430 %>%
   round(3)*100
 
 train_hogares$P6090[is.na(train_hogares$P6090)] <- 1
+train_hogares$P6100[is.na(train_hogares$P6100)] <- 1
+train_hogares$P6240[is.na(train_hogares$P6240)] <- 1
 train_hogares$P7090[is.na(train_hogares$P7090)] <- 2
 train_hogares$P6430[is.na(train_hogares$P6430)] <- 4
 train_hogares$P6426[is.na(train_hogares$P6426)] <- mean(train_hogares$P6426, na.rm = TRUE)
@@ -105,6 +118,16 @@ sapply(train_hogares, function(x) sum(is.na(x)))
 
 # *** En test_hogares
 test_hogares$P6090 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+test_hogares$P6100 %>%
+  table(useNA = "ifany") %>%
+  prop.table() %>%
+  round(3)*100
+
+test_hogares$P6240 %>%
   table(useNA = "ifany") %>%
   prop.table() %>%
   round(3)*100
@@ -120,6 +143,8 @@ test_hogares$P6430 %>%
   round(3)*100
 
 test_hogares$P6090[is.na(test_hogares$P6090)] <- 1
+test_hogares$P6100[is.na(test_hogares$P6100)] <- 1
+test_hogares$P6240[is.na(test_hogares$P6240)] <- 1
 test_hogares$P7090[is.na(test_hogares$P7090)] <- 2
 test_hogares$P6430[is.na(test_hogares$P6430)] <- 4
 test_hogares$P6426[is.na(test_hogares$P6426)] <- mean(test_hogares$P6426, na.rm = TRUE)
@@ -132,14 +157,15 @@ sapply(test_hogares, function(x) sum(is.na(x)))
 ## Seleccionando variables para los modelos
 
 train_hogares_final <- train_hogares %>%
-  select(id, Clase, Ingtotug, P5000, P5090, Nper, Pobre, P6020, P6040, P6090, P6210,
-         P6426, P6430, P6800, P7090,
+  select(id, Clase, Ingtotug, P5000, P5090, Nper, Pobre, P6020, P6040, P6090, P6100, P6210,
+         P6240, P6426, P6430, P6800, P7090,
          P6870)
 
 test_hogares_final <- test_hogares %>%
-  select(id, Clase, P5000, P5090, Nper, P6020, P6040, P6090, P6210,
-         P6426, P6430, P6800, P7090,
+  select(id, Clase, P5000, P5090, Nper, P6020, P6040, P6090, P6100, P6210,
+         P6240, P6426, P6430, P6800, P7090,
          P6870)
+
 colnames(train_hogares_final)
 colnames(test_hogares_final)
 
@@ -157,8 +183,10 @@ train_hogares_final<-train_hogares_final %>%
          personas_hogar= Nper,
          hombre = P6020,
          edad = P6040,
-         entidad_salud =P6090,
+         entidad_salud = P6090,
+         Reg_segsoc = P6100,
          nivel_educativo = P6210,
+         Actividad = P6240,
          tiempo_trabajando = P6426,
          tipo_de_trabajo = P6430,
          horas_trabajo = P6800,
@@ -177,7 +205,9 @@ test_hogares_final<-test_hogares_final %>%
          hombre = P6020,
          edad = P6040,
          entidad_salud =P6090,
+         Reg_segsoc = P6100,
          nivel_educativo = P6210,
+         Actividad = P6240,
          tiempo_trabajando = P6426,
          tipo_de_trabajo = P6430,
          horas_trabajo = P6800,
@@ -197,14 +227,17 @@ train_hogares_final<-train_hogares_final %>%
          mas_trabajo = if_else(mas_trabajo == 1, 1, 0)
   )
 
+summary(train_hogares_final$tipo_de_trabajo)
 
 #Variables categóricas a factores - Labels Factores
 train_hogares_final<-train_hogares_final%>%
   mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
          vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
          hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
+         Reg_segsoc= factor(Reg_segsoc, levels=c(1,2,3,9), labels=c("Contributivo","Especial","Subsidiado","No_sabe")),
          pobre=factor(Pobre, levels=c(0,1), labels=c("No pobre","Sí pobre")),
          entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
+         Actividad= factor(Actividad, levels=c(1,2,3,4,5,6), labels=c("Trabajar","Buscar","Estudiar","Oficios_hog","Incapacitado","Otras")),
          nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6,7), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior", "no_sabe")),
          tipo_de_trabajo=factor(tipo_de_trabajo, levels=c(1,2,3,4,5,6,7,8,9), labels=c("obre_part", "obre_gob", "empl_dom", "cuet_propia", "empleador", "trab_fam", "trab_emp", "jornal", "otro")),
          mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo"))
@@ -223,7 +256,7 @@ test_hogares_final<-test_hogares_final %>%
   mutate(entidad_salud = if_else(entidad_salud == 1, 1, 0), 
          cabecera_resto = if_else(cabecera_resto == 1, 1, 0),
          hombre = if_else(hombre == 1, 1, 0),
-         mas_trabajo = if_else(mas_trabajo == 1, 1, 0)
+         mas_trabajo = if_else(mas_trabajo == 1, 1, 0),
   )
 
 
@@ -232,7 +265,9 @@ test_hogares_final<-test_hogares_final%>%
   mutate(cabecera_resto=factor(cabecera_resto, levels=c(0, 1), labels=c("resto", "cabecera")),
          vivienda_propia=factor(vivienda_propia, levels=c(1,2,3,4,5,6), labels=c("propia_pagada", "propia_pagando", "arriendo", "usufructo", "posesión_sin_título", "otra")),
          hombre= factor(hombre, levels=c(0,1), labels=c("mujer", "hombre")),
+         Reg_segsoc= factor(Reg_segsoc, levels=c(1,2,3,9), labels=c("Contributivo","Especial","Subsidiado","No_sabe")),
          entidad_salud=factor(entidad_salud, levels=c(0,1), labels=c("No salud","Sí salud")),
+         Actividad= factor(Actividad, levels=c(1,2,3,4,5,6), labels=c("Trabajar","Buscar","Estudiar","Oficios_hog","Incapacitado","Otras")),
          nivel_educativo=factor(nivel_educativo, levels=c(1,2,3,4,5,6,7), labels=c("ninguno", "pre_esc", "primaria", "secundaria", "media", "superior", "no_sabe")),
          tipo_de_trabajo=factor(tipo_de_trabajo, levels=c(1,2,3,4,5,6,7,8,9), labels=c("obre_part", "obre_gob", "empl_dom", "cuet_propia", "empleador", "trab_fam", "trab_emp", "jornal", "otro")),
          mas_trabajo=factor(mas_trabajo, levels=c(0,1), labels=c("Si más trabajo","No más trabajo"))
@@ -263,20 +298,22 @@ test_hogares_final$nivel_educativo[is.na(test_hogares_final$nivel_educativo)] <-
 sapply(train_hogares_final, function(x) sum(is.na(x)))  # No tiene NAs
 sapply(test_hogares_final, function(x) sum(is.na(x)))   # No tiene NAs
 
+####
+
 #-------------------------------------------------------------------------------------------
 ## BASE PARA INCOME REGRESSION MODEL
 
 # Ahora procedemos a dummyficar la base train_hogares_final
 
 train_hogares_s<- model.matrix(~ income + cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
-                                 hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
+                                 hombre + edad + entidad_salud + Reg_segsoc + nivel_educativo + Actividad + tiempo_trabajando +
                                  tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp + pobre, train_hogares_final) %>%
   as.data.frame()
 
 # Ahora procedemos a dummyficar la base test_hogares_final
 
 test_hogares_s<- model.matrix(~ cabecera_resto + cuartos_hogar + vivienda_propia + personas_hogar +
-                                hombre + edad + entidad_salud + nivel_educativo + tiempo_trabajando +
+                                hombre + edad + entidad_salud + Reg_segsoc + nivel_educativo + Actividad + tiempo_trabajando +
                                 tipo_de_trabajo + horas_trabajo + mas_trabajo + tam_emp, test_hogares_final) %>%
   as.data.frame()
 
@@ -304,16 +341,31 @@ sapply(test_hogares_s, function(x) sum(is.na(x)))   # No tiene NAs
 
 pobre<-train_hogares_final$Pobre # definimos objeto pobre
 
-train_hogares_s<- train_hogares_s%>% mutate(pobre=factor(pobre,levels=c(0,1),labels=c("No","Si")))
+train_hogares_s <- rename(train_hogares_s, desempleado = ActividadBuscar)##Creamos variable desempleo
+test_hogares_s <- rename(test_hogares_s, desempleado = ActividadBuscar)
 
+train_hogares_s<- train_hogares_s%>% mutate(pobre=factor(pobre,levels=c(0,1),labels=c("No","Si"))) 
+
+train_hogares_s<- train_hogares_s%>% mutate(desempleado=factor(desempleado,levels=c(0,1),labels=c("No","Si"))) #As Factor desempleo
+test_hogares_s <- test_hogares_s%>% mutate(desempleado=factor(desempleado,levels=c(0,1),labels=c("No","Si")))
 table(train_hogares_s$pobre)
+table(train_hogares_s$desempleado)
 
 # Plot para revisar variables relevantes
 
-plot(pobre ~ cabecera_resto, data=train_hogares_final, col=c(8,2), ylab="Pobre")
-plot(pobre ~ vivienda_propia, data=train_hogares_final, col=c(8,2), ylab="Pobre")
-plot(pobre ~ cuartos_hogar, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ cabecera_resto, data=train_hogares_final, col=c(8,2), ylab="Pobre", xlab="Donde Vive?")
+plot(pobre ~ vivienda_propia, data=train_hogares_final, col=c(8,2), ylab="Pobre", xlab="Tipo de vivienda")
+plot(pobre ~ cuartos_hogar, data=train_hogares_final, col=c(8,2), ylab="Pobre", xlab="No Cuartos")
 plot(pobre ~ tipo_de_trabajo, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ personas_hogar, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ entidad_salud, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ nivel_educativo , data=train_hogares_final, col=c(8,2), ylab="Pobre", xlab="Educación")
+plot(pobre ~ mas_trabajo , data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ Actividad , data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ Reg_segsoc , data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ hombre, data=train_hogares_final, col=c(8,2), ylab="Pobre")
+plot(pobre ~ desempleado, data=train_hogares_s, col=c(8,2), ylab="Pobre")
+
 
 head(train_hogares_s)
 summary(train_hogares_s)
@@ -321,9 +373,9 @@ summary(train_hogares_s)
 #Scatter
 
 #Estimando el modelo Logit
-
-mylogit <- glm(pobre~income+cabecera_restocabecera+cuartos_hogar+vivienda_propiapropia_pagando+vivienda_propiaarriendo+vivienda_propiausufructo+
-                 +vivienda_propiaposesión_sin_título+vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+horas_trabajo, family = "binomial", data = train_hogares_s)
+mylogit <- glm(pobre~income+cabecera_restocabecera+cuartos_hogar+vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                  vivienda_propiausufructo+vivienda_propiaposesión_sin_título+vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                  Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, family = "binomial",data = train_hogares_s)
 summary(mylogit,type="text")
 
 stargazer(mylogit, type = "text",
@@ -390,8 +442,6 @@ legend("bottomright",fill=c("red","blue"),
 
 fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...)) 
 
-
-
 ctrl<- trainControl(method = "cv",
                     number = 5,
                     summaryFunction = fiveStats, 
@@ -431,19 +481,29 @@ mylogit_caret2 <- train(pobre~cabecera_restocabecera+cuartos_hogar+
 
 mylogit_caret2
 
-Y_hat <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/ingresos_predichos.csv")
-test_hogares <- cbind(test_hogares,predictTest_logit2)
-test_hogares <- rename(test_hogares, pobre = pred) ## ingresos predichos. 
+#Modelo 3
+
+mylogit_caret3 <- train(pobre~+cabecera_restocabecera+cuartos_hogar+
+                          vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                          vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                          vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                          +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
+                        data = train_hogares_s,
+                        method = "glm",
+                        trControl = ctrl,
+                        family = "binomial", 
+                        metric = 'ROC')
+
+mylogit_caret3
 
 
-#Modelo 3 ##¡PENDIENTE CUANDO TENGA Y_HAT
+#Modelo 4 ##¡PENDIENTE CUANDO TENGA Y_HAT
 
 mylogit_caret_inc <- train(pobre~income+cabecera_restocabecera+cuartos_hogar+
-                         vivienda_propiapropia_pagando+vivienda_propiaarriendo+
-                         vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                         vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                         nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                         tipo_de_trabajoempleador+horas_trabajo, 
+                             vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                             vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                             vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                             +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                        data = train_hogares_s, 
                        method = "glm",
                        trControl = ctrl,
@@ -453,7 +513,7 @@ mylogit_caret_inc <- train(pobre~income+cabecera_restocabecera+cuartos_hogar+
 mylogit_caret_inc
 
 
-#Out of sample prediction
+#Out of sample prediction con Test_hogares ( No tiene variable Pobre ni ingreso, i.e no es posible ver observados)
 
 # Modelo 1
 
@@ -475,19 +535,62 @@ predictTest_logit2 <- data.frame (
 head(predictTest_logit2)
 summary(predictTest_logit2)
 
-# Modelo 3 #Pendiente cuando tenga la base
+# Modelo 3
 
-predictTest_logit <- data.frame (
-  predict(mylogit_caret, newdata = test_hogares_s, type="prob"),
-  pred = predict(mylogit_caret, newdata = test_hogares_s, type = "raw")
+predictTest_logit3 <- data.frame (
+  predict(mylogit_caret3, newdata = test_hogares_s, type="prob"),
+  pred = predict(mylogit_caret3, newdata = test_hogares_s, type = "raw")
 )
 
-head(predictTest_logit)
-summary(predictTest_logit) ## PENDIENTE CON BASE DE Y_HAT
+head(predictTest_logit3)
+summary(predictTest_logit3)
 
-#Sample submision model 1 
+#llamar ingresos predichos
 
-test_hogares <- cbind(test_hogares,predictTest_logit2)
+y_hat <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/ingresos_predichos.csv")
+
+test_hogares_s <- cbind(test_hogares_s,y_hat)
+test_hogares_s <- rename(test_hogares_s, income = y_hat_lasso)
+
+# Modelo 4 #Pendiente cuando tenga base predicha
+
+
+predictTest_logit_yhat <- data.frame (
+  predict(mylogit_caret_inc, newdata = test_hogares_s, type="prob"),
+  pred = predict(mylogit_caret_inc, newdata = test_hogares_s, type = "raw")
+)
+
+head(predictTest_logit_yhat)
+summary(predictTest_logit_yhat)
+
+#Sample submision model y_hat
+
+test_hogares_yhat <- cbind(test_hogares_s,predictTest_logit_yhat)
+test_hogares_yhat <- rename(test_hogares_yhat, pobre = pred)
+
+sample_submission <- sample_submission %>% 
+  select(id)
+
+test_hogares_yhat <- cbind(test_hogares_yhat,sample_submission)
+sample_submission_yhat <- test_hogares_yhat %>% 
+  select(id, pobre)
+
+table(sample_submission_yhat$pobre)
+table(sample_submission_yhat$pobre)
+table(train_hogares$Pobre)
+
+library(dplyr)
+
+sample_submission_yhat <- sample_submission_yhat %>%
+  mutate(pobre = ifelse(pobre=="Si", 1,0))
+
+setwd("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data")
+
+write.csv(sample_submission_yhat, file="predichosyhat.csv", row.names = F)
+
+#Sample submision model benchmark 
+
+test_hogares <- cbind(test_hogares,predictTest_logit3)
 test_hogares <- rename(test_hogares, pobre = pred)
 
 
@@ -503,12 +606,100 @@ library(dplyr)
 sample_submission_1 <- sample_submission_1 %>%
   mutate(pobre = ifelse(pobre=="Si", 1,0))
 
+setwd("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data")
+
+write.csv(sample_submission_1, file="predichos28.csv", row.names = F)
+
+y_hat <- read_csv("~/Desktop/MAESTRIA 2023/Big Data and Machine Learning/Taller 2/Data/ingresos_predichos.csv")
+
+##---Evaluación de modelos out of sample, con partición de los datos de training---##
+
+#--Partición base training
+
+inTrain <- createDataPartition(
+  y = train_hogares_s$pobre, #Variable objetivo
+  p = .7, ## 70% para entrenamiento
+  list = FALSE)
+
+train <- train_hogares_s[ inTrain,]
+test <- train_hogares_s[-inTrain,]
+
+head(train)
+
+##--- Modelo Benchmark
+
+mylogit_caret3
+head(predictTest_logit3)
+
+
+#-----Logit---#
+
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...)) 
+
+
+
+ctrl<- trainControl(method = "cv",
+                    number = 5,
+                    summaryFunction = fiveStats, 
+                    classProbs = TRUE,
+                    verbose=FALSE,
+                    savePredictions = T)
+
+set.seed(1410)
+
+
+mylogit_caret3 <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+                          vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                          vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                          vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                          +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
+                        data = train,
+                        method = "glm",
+                        trControl = ctrl,
+                        family = "binomial", 
+                        metric = 'ROC')
+
+mylogit_caret3
+
+mylogit_caret3.1 <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+                            vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                            vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                            vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                            +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
+                          data = train[1:1000,],
+                          method = "glm",
+                          trControl = ctrl,
+                          family = "binomial", 
+                          metric = 'ROC')
+
+mylogit_caret3.1
+
+
+# ver predicción:
+
+predictTest_logit3 <- data.frame(
+  obs = test$pobre,                                    ## observed class labels
+  predict(mylogit_caret3, newdata = test, type = "prob"),         ## predicted class probabilities
+  pred = predict(mylogit_caret, newdata = test, type = "raw")    ## predicted class labels
+)
+
+predictTest_logit3.1 <- data.frame(
+  obs = test$pobre,                                    ## observed class labels
+  predict(mylogit_caret3.1, newdata = test, type = "prob"),         ## predicted class probabilities
+  pred = predict(mylogit_caret3.1, newdata = test, type = "raw")    ## predicted class labels
+)
+
+head(predictTest_logit3)
+
+twoClassSummary(data = predictTest_logit3, lev = levels(predictTest_logit3$obs))
+
+prSummary(data = predictTest_logit3, lev = levels(predictTest_logit3$obs))
 
 #------LDA-----#
 
 lda_fit = train(pobre~cuartos_hogar+edad+personas_hogar+tiempo_trabajando+
                   horas_trabajo+tam_emp, 
-                data=train_hogares_s, 
+                data=train, 
                 method="lda",
                 trControl = ctrl,
                 metric = 'ROC')
@@ -516,13 +707,50 @@ lda_fit = train(pobre~cuartos_hogar+edad+personas_hogar+tiempo_trabajando+
 lda_fit
 
 predictTest_lda <- data.frame(
-  predict(lda_fit, newdata = test_hogares_s, type = "prob"),         ## predicted class probabilities
-  pred = predict(lda_fit, newdata = test_hogares_s, type = "raw")    ## predicted class labels
+  obs = test$pobre,                                    ## observed class labels
+  predict(lda_fit, newdata = test, type = "prob"),         ## predicted class probabilities
+  pred = predict(lda_fit, newdata = test, type = "raw")    ## predicted class labels
 )
 
 head(predictTest_lda) 
 
-## Revisar para subirlo 
+lda_fit2 = train(pobre~cuartos_hogar+edad+personas_hogar+tiempo_trabajando+
+                  horas_trabajo+tam_emp, 
+                data=train[1:1000,], 
+                method="lda",
+                trControl = ctrl,
+                metric = 'ROC')
+lda_fit2
+
+predictTest_lda2 <- data.frame(
+  obs = test$pobre,                                    ## observed class labels
+  predict(lda_fit2, newdata = test[1:1000,], type = "prob"),         ## predicted class probabilities
+  pred = predict(lda_fit2, newdata = test[1:1000,], type = "raw")    ## predicted class labels
+)
+
+head(predictTest_lda2) 
+
+
+twoClassSummary(data = predictTest_lda, lev = levels(predictTest_lda$obs))
+
+prSummary(data = predictTest_lda, lev = levels(predictTest_lda$obs))
+
+#ROC performance in sample
+
+class(test_hogares_s$pobre)
+
+
+p_load("MLeval")
+
+res_lda_fit <- evalm(lda_fit2,plots = "r")
+
+res_insample_all <- evalm(list(lda_fit2,mylogit_caret3.1),gnames=c('LDA','Logit'),plots='r')
+
+#Out of sample
+
+res_outsample_logit <- evalm(predictTest_logit3.1,plots='r')
+res_outsample_lda <- evalm(predictTest_lda2,plots='r')
+
 
 ###--------DESBALANCE DE CLASES-------####
  
@@ -556,9 +784,11 @@ dim(training)
 dim(testing)
 dim(evaluation)
 
-# Usamos Modelos 1 y 2 - para entrenarlo
+#Iniciamos con nuestro benchmark Mylogit Caret
 
 fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...)) 
+
+
 
 ctrl<- trainControl(method = "cv",
                     number = 5,
@@ -569,35 +799,19 @@ ctrl<- trainControl(method = "cv",
 
 set.seed(1410)
 
-#Modelo 1
 
-mylogit_caret <- train(pobre~cabecera_restocabecera+cuartos_hogar+
-                         vivienda_propiapropia_pagando+vivienda_propiaarriendo+
-                         vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                         vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+horas_trabajo, 
-                       data = training, 
-                       method = "glm",
-                       trControl = ctrl,
-                       family = "binomial", 
-                       metric = 'ROC')
-
-mylogit_caret
-
-# Modelo 2
-
-mylogit_caret2 <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+mylogit_caret3 <- train(pobre~cabecera_restocabecera+cuartos_hogar+
                           vivienda_propiapropia_pagando+vivienda_propiaarriendo+
                           vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                          vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                          nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                          tipo_de_trabajoempleador+horas_trabajo, 
+                          vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                          +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                         data = training,
                         method = "glm",
                         trControl = ctrl,
                         family = "binomial", 
                         metric = 'ROC')
 
-mylogit_caret2
+mylogit_caret3
 
 ##-----TUNNING-------###
 
@@ -607,19 +821,18 @@ mylogit_caret2
 
 #Aca nuestro target sera Specificity
 set.seed(1410)
-mylogit_caret2 <- train(pobre~cabecera_restocabecera+cuartos_hogar+
-                         vivienda_propiapropia_pagando+vivienda_propiaarriendo+
-                         vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                         vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                         nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                         tipo_de_trabajoempleador+horas_trabajo, 
-                       data = training, 
+mylogit_caret3_spe <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+                              vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                              vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                              vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                              +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
+                            data = training, 
                        method = "glm",
                        trControl = ctrl,
                        family = "binomial", 
                        metric = 'Spec')
 
-mylogit_caret2 ##No cambia mucho pues el modelo es bastante Naive Bayes
+mylogit_caret3_spe ##No cambia mucho pues el modelo es bastante Naive Bayes
 
 #Lasso ## 
 #En lasso si debe cambiar pues aca debemos elegir paramentro lambda que optimiza una metrica
@@ -633,9 +846,8 @@ set.seed(1410)
 mylogit_lasso_spec <- train(pobre~cabecera_restocabecera+cuartos_hogar+
                               vivienda_propiapropia_pagando+vivienda_propiaarriendo+
                               vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                              vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                              nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                              tipo_de_trabajoempleador+horas_trabajo,
+                              vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                              +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                             data = training, 
                             method = "glmnet",
                             trControl = ctrl,
@@ -652,21 +864,20 @@ lambda_grid <- 10^seq(-4, 0.01, length = 10) #en la practica se suele usar una g
 
 
 set.seed(1410)
-mylogit_lasso_spec <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+mylogit_lasso_sens <- train(pobre~cabecera_restocabecera+cuartos_hogar+
                               vivienda_propiapropia_pagando+vivienda_propiaarriendo+
                               vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                              vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                              nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                              tipo_de_trabajoempleador+horas_trabajo,
+                              vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                              +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                             data = training, 
                             method = "glmnet",
                             trControl = ctrl,
                             family = "binomial", 
-                            metric = "Spec",
+                            metric = "Sens",
                             tuneGrid = expand.grid(alpha = 0,lambda=lambda_grid), 
                             preProcess = c("center", "scale")
 )
-mylogit_lasso_spec
+mylogit_lasso_sens
 
 ###------ACURACCY-----###
 
@@ -679,9 +890,8 @@ set.seed(1410)
 mylogit_lasso_acc <- train(pobre~cabecera_restocabecera+cuartos_hogar+
                              vivienda_propiapropia_pagando+vivienda_propiaarriendo+
                              vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                             vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                             nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                             tipo_de_trabajoempleador+horas_trabajo,
+                             vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                             +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                            data = training, 
                            method = "glmnet",
                            trControl = ctrl,
@@ -695,20 +905,18 @@ mylogit_lasso_acc
 ##------ROC----##
 
 set.seed(1410)
-mylogit_lasso_roc <- train(
-  pobre~cabecera_restocabecera+cuartos_hogar+
-    vivienda_propiapropia_pagando+vivienda_propiaarriendo+
-    vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-    vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-    nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-    tipo_de_trabajoempleador+horas_trabajo, 
-  data = training, 
-  method = "glmnet",
-  trControl = ctrl,
-  family = "binomial", 
-  metric = "ROC",
-  tuneGrid = expand.grid(alpha = 0,lambda=lambda_grid), 
-  preProcess = c("center", "scale")
+mylogit_lasso_roc <- train(pobre~cabecera_restocabecera+cuartos_hogar+
+                             vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                             vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                             vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                             +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
+                           data = training,  
+                           method = "glmnet",
+                           trControl = ctrl,
+                           family = "binomial", 
+                           metric = "ROC",
+                           tuneGrid = expand.grid(alpha = 0,lambda=lambda_grid), 
+                           preProcess = c("center", "scale")
 )
 mylogit_lasso_roc
 
@@ -758,9 +966,8 @@ set.seed(1410)
 mylogit_lasso_upsample <- train(pobre~cabecera_restocabecera+cuartos_hogar+
                                   vivienda_propiapropia_pagando+vivienda_propiaarriendo+
                                   vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                                  vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                                  nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                                  tipo_de_trabajoempleador+horas_trabajo, 
+                                  vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                                  +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                                 data = upSampledTrain, 
                                 method = "glmnet",
                                 trControl = ctrl,
@@ -785,11 +992,10 @@ dim(downSampledTrain)
 table(downSampledTrain$pobre)
 
 mylogit_lasso_doownsample <- train(pobre~cabecera_restocabecera+cuartos_hogar+
-                                  vivienda_propiapropia_pagando+vivienda_propiaarriendo+
-                                  vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
-                                  vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosecundaria+
-                                  nivel_educativomedia+horas_trabajo+tipo_de_trabajoobre_gob+tipo_de_trabajocuet_propia+
-                                  tipo_de_trabajoempleador+horas_trabajo, 
+                                        vivienda_propiapropia_pagando+vivienda_propiaarriendo+
+                                        vivienda_propiausufructo+vivienda_propiaposesión_sin_título+
+                                        vivienda_propiaotra+personas_hogar+hombrehombre+edad+nivel_educativosuperior+nivel_educativosecundaria+
+                                        +nivel_educativomedia+Reg_segsocSubsidiado+horas_trabajo+desempleado+tam_emp, 
                                 data = downSampledTrain, 
                                 method = "glmnet",
                                 trControl = ctrl,
@@ -807,9 +1013,11 @@ p_load("smotefamily")
 predictors<-c("cabecera_restocabecera","cuartos_hogar",
                 "vivienda_propiapropia_pagando","vivienda_propiaarriendo",
                 "vivienda_propiausufructo","vivienda_propiaposesión_sin_título",
-                "vivienda_propiaotra","personas_hogar","hombrehombre","edad","nivel_educativosecundaria",
-                "nivel_educativomedia","horas_trabajo","tipo_de_trabajoobre_gob","tipo_de_trabajocuet_propia",
-                "tipo_de_trabajoempleador","horas_trabajo")
+                "vivienda_propiaotra","personas_hogar","hombrehombre","edad","nivel_educativosuperior","nivel_educativosecundaria",
+                "nivel_educativomedia","Reg_segsocSubsidiado","horas_trabajo","tdesempleado",
+                "tam_emp")
+
+head( training[predictors])
 head( training[predictors])
 
 smote_output = SMOTE(X = training[predictors],
@@ -834,17 +1042,41 @@ mylogit_lasso_smote <- train(class~cabecera_restocabecera+cuartos_hogar+
                                    tuneGrid = expand.grid(alpha = 0,lambda=lambda_grid), 
                                    preProcess = c("center", "scale")
 )
+
+
 mylogit_lasso_smote
 
 class(mylogit_caret)
 class(mylogit_lasso_roc)
+
+
+
 testResults <- data.frame(pobre = testing$pobre)
 
-testResults$logit<- predict(mylogit_caret,
+testResults$logit<- predict(mylogit_caret3,
                             newdata = testing,
                             type ="prob")[,1]
 
-testResults$logit2<- predict(mylogit_caret2,
+testResults$lasso<- predict(mylogit_lasso_roc,
                             newdata = testing,
                             type ="prob")[,1]
+
+testResults$lassoAcc<- predict(mylogit_lasso_acc,
+                            newdata = testing,
+                            type ="prob")[,1]
+
+testResults$lassoSens<- predict(mylogit_lasso_sens,
+                               newdata = testing,
+                               type ="prob")[,1]
+
+testResults<-testResults %>% 
+  mutate(logit=ifelse(logit>0.5,"Si","No"),
+         lasso=ifelse(lasso>0.5,"Si","No"),
+         lassoAcc=ifelse(lasso_thresh>rfThresh$threshold,"Si","No"),
+         lasso_upsample=ifelse(lasso_upsample>0.5,"Si","No"),
+         mylogit_lasso_downsample=ifelse(mylogit_lasso_downsample>0.5,"Si","No"),
+         mylogit_lasso_smote=ifelse(mylogit_lasso_smote>0.5,"Si","No"),
+  )
+
+
 
